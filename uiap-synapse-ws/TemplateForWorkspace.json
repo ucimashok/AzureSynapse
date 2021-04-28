@@ -1,0 +1,3195 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"workspaceName": {
+			"type": "string",
+			"metadata": "Workspace name",
+			"defaultValue": "uiap-synapse-ws"
+		},
+		"uiap-synapse-ws-WorkspaceDefaultSqlServer_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'uiap-synapse-ws-WorkspaceDefaultSqlServer'"
+		},
+		"HOLSource_sasUri": {
+			"type": "secureString",
+			"metadata": "Secure string for 'sasUri' of 'HOLSource'"
+		},
+		"uiap-synapse-ws-WorkspaceDefaultStorage_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://synapselabinfra.dfs.core.windows.net"
+		}
+	},
+	"variables": {
+		"workspaceId": "[concat('Microsoft.Synapse/workspaces/', parameters('workspaceName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('workspaceName'), '/ImportData')]",
+			"type": "Microsoft.Synapse/workspaces/pipelines",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"activities": [
+					{
+						"name": "Copy data1",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "BinarySource",
+								"storeSettings": {
+									"type": "AzureBlobStorageReadSettings",
+									"recursive": true
+								},
+								"formatSettings": {
+									"type": "BinaryReadSettings"
+								}
+							},
+							"sink": {
+								"type": "BinarySink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings"
+								}
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "holsource",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "holdist",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					}
+				],
+				"annotations": [],
+				"lastPublishTime": "2021-04-08T09:54:37Z"
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/datasets/holsource')]",
+				"[concat(variables('workspaceId'), '/datasets/holdist')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/holdist')]",
+			"type": "Microsoft.Synapse/workspaces/datasets",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "uiap-synapse-ws-WorkspaceDefaultStorage",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Binary",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileSystem": "datalake"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/linkedServices/uiap-synapse-ws-WorkspaceDefaultStorage')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/holsource')]",
+			"type": "Microsoft.Synapse/workspaces/datasets",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "HOLSource",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Binary",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"folderPath": "infrastructure",
+						"container": "synapse-in-a-day"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/linkedServices/HOLSource')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/AzureSynapsePowerBI')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"annotations": [],
+				"type": "PowerBIWorkspace",
+				"typeProperties": {
+					"workspaceID": "8fd8bba4-a398-49dc-af4e-bb672923969e",
+					"tenantID": "008502d6-3f79-46f0-ab37-9354e3fe80ff"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/HOLSource')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobStorage",
+				"typeProperties": {
+					"sasUri": "[parameters('HOLSource_sasUri')]"
+				},
+				"connectVia": {
+					"referenceName": "AutoResolveIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/uiap-synapse-ws-WorkspaceDefaultSqlServer')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"parameters": {
+					"DBName": {
+						"type": "String"
+					}
+				},
+				"annotations": [],
+				"type": "AzureSqlDW",
+				"typeProperties": {
+					"connectionString": "[parameters('uiap-synapse-ws-WorkspaceDefaultSqlServer_connectionString')]"
+				},
+				"connectVia": {
+					"referenceName": "AutoResolveIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/uiap-synapse-ws-WorkspaceDefaultStorage')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('uiap-synapse-ws-WorkspaceDefaultStorage_properties_typeProperties_url')]"
+				},
+				"connectVia": {
+					"referenceName": "AutoResolveIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/AutoResolveIntegrationRuntime')]",
+			"type": "Microsoft.Synapse/workspaces/integrationRuntimes",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"type": "Managed",
+				"typeProperties": {
+					"computeProperties": {
+						"location": "AutoResolve",
+						"dataFlowProperties": {
+							"computeType": "General",
+							"coreCount": 8,
+							"timeToLive": 0
+						}
+					}
+				},
+				"managedVirtualNetwork": {
+					"type": "ManagedVirtualNetworkReference",
+					"referenceName": "default"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/managedVirtualNetworks/default')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/WorkspaceSystemIdentity')]",
+			"type": "Microsoft.Synapse/workspaces/credentials",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"type": "ManagedIdentity",
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/SQL script 1')]",
+			"type": "Microsoft.Synapse/workspaces/sqlscripts",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"content": {
+					"query": "SELECT TOP (100) [totalAmount]\n,[fareAmount]\n,[tipAmount]\n,[paymentType]\n,[rateCodeId]\n,[passengerCount]\n,[tripDistance]\n,[tpepPickupDateTime]\n,[tpepDropoffDateTime]\n,[pickupHour]\n,[weekdayString]\n,[tripTimeSecs]\n,[tipped]\n FROM [nyctlctutorial].[dbo].[nyctaxi]",
+					"metadata": {
+						"language": "sql"
+					},
+					"currentConnection": {
+						"poolName": "Built-in",
+						"databaseName": "nyctlctutorial"
+					},
+					"resultLimit": 5000
+				},
+				"type": "SqlQuery"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/AzureSynapse-azureml-opendatasets-nyc_tlc_yellow')]",
+			"type": "Microsoft.Synapse/workspaces/notebooks",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"nbformat": 0,
+				"nbformat_minor": 0,
+				"bigDataPool": {
+					"referenceName": "azsynapsepool",
+					"type": "BigDataPoolReference"
+				},
+				"sessionProperties": {
+					"driverMemory": "56g",
+					"driverCores": 8,
+					"executorMemory": "56g",
+					"executorCores": 8,
+					"numExecutors": 2,
+					"conf": {
+						"spark.dynamicAllocation.enabled": "false",
+						"spark.dynamicAllocation.minExecutors": "2",
+						"spark.dynamicAllocation.maxExecutors": "2"
+					}
+				},
+				"metadata": {
+					"saveOutput": true,
+					"synapse_widget": {
+						"version": "0.1",
+						"state": {
+							"1e500027-49cc-442e-b29d-9f1574f3e28e": {
+								"type": "Synapse.DataFrame",
+								"sync_state": {
+									"table": {
+										"rows": [
+											{
+												"puLocationId": "230",
+												"rateCodeId": 1,
+												"passengerCount": 1,
+												"puMonth": 5,
+												"tpepPickupDateTime": "2018-05-03T19:21:47Z",
+												"mtaTax": 0.5,
+												"improvementSurcharge": "0.3",
+												"tpepDropoffDateTime": "2018-05-03T19:32:14Z",
+												"doLocationId": "50",
+												"paymentType": "1",
+												"tripDistance": 0.9,
+												"vendorID": "1",
+												"totalAmount": 11.75,
+												"storeAndFwdFlag": "N",
+												"puYear": 2018,
+												"extra": 1,
+												"fareAmount": 8,
+												"tipAmount": 1.95,
+												"tollsAmount": 0
+											},
+											{
+												"puLocationId": "211",
+												"rateCodeId": 1,
+												"passengerCount": 1,
+												"puMonth": 5,
+												"tpepPickupDateTime": "2018-05-03T18:56:11Z",
+												"mtaTax": 0.5,
+												"improvementSurcharge": "0.3",
+												"tpepDropoffDateTime": "2018-05-03T19:07:34Z",
+												"doLocationId": "68",
+												"paymentType": "1",
+												"tripDistance": 2,
+												"vendorID": "1",
+												"totalAmount": 13.55,
+												"storeAndFwdFlag": "N",
+												"puYear": 2018,
+												"extra": 1,
+												"fareAmount": 9.5,
+												"tipAmount": 2.25,
+												"tollsAmount": 0
+											},
+											{
+												"puLocationId": "164",
+												"rateCodeId": 1,
+												"passengerCount": 1,
+												"puMonth": 5,
+												"tpepPickupDateTime": "2018-05-03T15:46:54Z",
+												"mtaTax": 0.5,
+												"improvementSurcharge": "0.3",
+												"tpepDropoffDateTime": "2018-05-03T16:15:10Z",
+												"doLocationId": "43",
+												"paymentType": "1",
+												"tripDistance": 3,
+												"vendorID": "1",
+												"totalAmount": 23.75,
+												"storeAndFwdFlag": "N",
+												"puYear": 2018,
+												"extra": 1,
+												"fareAmount": 18,
+												"tipAmount": 3.95,
+												"tollsAmount": 0
+											},
+											{
+												"puLocationId": "249",
+												"rateCodeId": 1,
+												"passengerCount": 1,
+												"puMonth": 5,
+												"tpepPickupDateTime": "2018-05-03T17:23:48Z",
+												"mtaTax": 0.5,
+												"improvementSurcharge": "0.3",
+												"tpepDropoffDateTime": "2018-05-03T17:27:32Z",
+												"doLocationId": "186",
+												"paymentType": "1",
+												"tripDistance": 0.84,
+												"vendorID": "2",
+												"totalAmount": 8.84,
+												"storeAndFwdFlag": "N",
+												"puYear": 2018,
+												"extra": 1,
+												"fareAmount": 5,
+												"tipAmount": 2.04,
+												"tollsAmount": 0
+											},
+											{
+												"puLocationId": "264",
+												"rateCodeId": 1,
+												"passengerCount": 1,
+												"puMonth": 5,
+												"tpepPickupDateTime": "2018-05-03T15:43:54Z",
+												"mtaTax": 0.5,
+												"improvementSurcharge": "0.3",
+												"tpepDropoffDateTime": "2018-05-03T15:46:10Z",
+												"doLocationId": "264",
+												"paymentType": "2",
+												"tripDistance": 0.3,
+												"vendorID": "1",
+												"totalAmount": 5.3,
+												"storeAndFwdFlag": "N",
+												"puYear": 2018,
+												"extra": 1,
+												"fareAmount": 3.5,
+												"tipAmount": 0,
+												"tollsAmount": 0
+											}
+										],
+										"schema": {
+											"vendorID": "string",
+											"tpepPickupDateTime": "int",
+											"tpepDropoffDateTime": "int",
+											"passengerCount": "int",
+											"tripDistance": "double",
+											"puLocationId": "string",
+											"doLocationId": "string",
+											"startLon": "double",
+											"startLat": "double",
+											"endLon": "double",
+											"endLat": "double",
+											"rateCodeId": "int",
+											"storeAndFwdFlag": "string",
+											"paymentType": "string",
+											"fareAmount": "double",
+											"extra": "double",
+											"mtaTax": "double",
+											"improvementSurcharge": "string",
+											"tipAmount": "double",
+											"tollsAmount": "double",
+											"totalAmount": "double",
+											"puYear": "int",
+											"puMonth": "int"
+										}
+									},
+									"isSummary": false,
+									"language": "scala"
+								},
+								"persist_state": {
+									"view": {
+										"type": "details",
+										"chartOptions": {
+											"chartType": "bar",
+											"aggregationType": "sum",
+											"categoryFieldKeys": [
+												"vendorID"
+											],
+											"seriesFieldKeys": [
+												"tpepPickupDateTime"
+											],
+											"isStacked": false
+										}
+									}
+								}
+							}
+						}
+					},
+					"kernelspec": {
+						"name": "synapse_pyspark",
+						"display_name": "Synapse PySpark"
+					},
+					"language_info": {
+						"name": "python"
+					},
+					"a365ComputeOptions": {
+						"id": "/subscriptions/03766bec-6c31-4851-aa3c-233d9b60aeaf/resourceGroups/uiap-d-si-synapse/providers/Microsoft.Synapse/workspaces/uiap-synapse-ws/bigDataPools/azsynapsepool",
+						"name": "azsynapsepool",
+						"type": "Spark",
+						"endpoint": "https://uiap-synapse-ws.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/azsynapsepool",
+						"auth": {
+							"type": "AAD",
+							"authResource": "https://dev.azuresynapse.net"
+						},
+						"sparkVersion": "2.4",
+						"nodeCount": 10,
+						"cores": 8,
+						"memory": 56,
+						"extraHeader": null
+					}
+				},
+				"cells": [
+					{
+						"cell_type": "code",
+						"source": [
+							"# This is a package in preview.\n",
+							"from azureml.opendatasets import NycTlcYellow\n",
+							"\n",
+							"from datetime import datetime\n",
+							"from dateutil import parser\n",
+							"\n",
+							"\n",
+							"end_date = parser.parse('2018-06-06')\n",
+							"start_date = parser.parse('2018-05-01')\n",
+							"nyc_tlc = NycTlcYellow(start_date=start_date, end_date=end_date)\n",
+							"nyc_tlc_df = nyc_tlc.to_spark_dataframe()"
+						],
+						"attachments": null,
+						"outputs": [],
+						"execution_count": 1
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"diagram": {
+								"activateDiagramType": 1,
+								"chartConfig": {
+									"category": "bar",
+									"keys": [
+										"vendorID"
+									],
+									"values": [
+										"passengerCount"
+									],
+									"yLabel": "passengerCount",
+									"xLabel": "vendorID",
+									"aggregation": "SUM",
+									"aggByBackend": false
+								},
+								"aggData": "{\"passengerCount\":{\"2\":5}}",
+								"isSummary": false,
+								"previewData": {
+									"filter": null
+								},
+								"isSql": false
+							},
+							"collapsed": false
+						},
+						"source": [
+							"# Display top 5 rows\n",
+							"display(nyc_tlc_df.limit(5))"
+						],
+						"attachments": null,
+						"outputs": [],
+						"execution_count": 2
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							},
+							"collapsed": true
+						},
+						"source": [
+							"filtered_df = nyc_tlc.to_spark_dataframe()\r\n",
+							"\r\n",
+							"from pyspark.sql.functions import unix_timestamp, date_format, col, when\r\n",
+							"\r\n",
+							"taxi_df = filtered_df.select('totalAmount', 'fareAmount', 'tipAmount', 'paymentType', 'rateCodeId', 'passengerCount'\\\r\n",
+							"                                , 'tripDistance', 'tpepPickupDateTime', 'tpepDropoffDateTime'\\\r\n",
+							"                                , date_format('tpepPickupDateTime', 'hh').alias('pickupHour')\\\r\n",
+							"                                , date_format('tpepPickupDateTime', 'EEEE').alias('weekdayString')\\\r\n",
+							"                                , (unix_timestamp(col('tpepDropoffDateTime')) - unix_timestamp(col('tpepPickupDateTime'))).alias('tripTimeSecs')\\\r\n",
+							"                                , (when(col('tipAmount') > 0, 1).otherwise(0)).alias('tipped')\r\n",
+							"                                )\\\r\n",
+							"                        .filter((filtered_df.passengerCount > 0) & (filtered_df.passengerCount < 8)\\\r\n",
+							"                                & (filtered_df.tipAmount >= 0) & (filtered_df.tipAmount <= 25)\\\r\n",
+							"                                & (filtered_df.fareAmount >= 1) & (filtered_df.fareAmount <= 250)\\\r\n",
+							"                                & (filtered_df.tipAmount < filtered_df.fareAmount)\\\r\n",
+							"                                & (filtered_df.tripDistance > 0) & (filtered_df.tripDistance <= 100)\\\r\n",
+							"                                & (filtered_df.rateCodeId <= 5)\r\n",
+							"                                & (filtered_df.paymentType.isin({\"1\", \"2\"})))"
+						],
+						"attachments": null,
+						"outputs": [],
+						"execution_count": 7
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							},
+							"collapsed": true
+						},
+						"source": [
+							"taxi_df.write.mode(\"overwrite\").saveAsTable(\"NycTlcTutorial.nyctaxi\")"
+						],
+						"attachments": null,
+						"outputs": [],
+						"execution_count": 9
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							},
+							"microsoft": {
+								"language": "python"
+							},
+							"collapsed": true
+						},
+						"source": [
+							"%%pyspark\r\n",
+							"spark.sql(\"CREATE DATABASE IF NOT EXISTS NycTlcTutorial\")"
+						],
+						"attachments": null,
+						"outputs": [],
+						"execution_count": 4
+					}
+				]
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/Notebook 1')]",
+			"type": "Microsoft.Synapse/workspaces/notebooks",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"nbformat": 4,
+				"nbformat_minor": 2,
+				"bigDataPool": {
+					"referenceName": "azsynapsepool",
+					"type": "BigDataPoolReference"
+				},
+				"sessionProperties": {
+					"driverMemory": "56g",
+					"driverCores": 8,
+					"executorMemory": "56g",
+					"executorCores": 8,
+					"numExecutors": 2,
+					"conf": {
+						"spark.dynamicAllocation.enabled": "false",
+						"spark.dynamicAllocation.minExecutors": "2",
+						"spark.dynamicAllocation.maxExecutors": "2"
+					}
+				},
+				"metadata": {
+					"saveOutput": true,
+					"synapse_widget": {
+						"version": "0.1",
+						"state": {
+							"9882e548-fbe0-4752-b18b-b9c46fd9bc8d": {
+								"type": "Synapse.DataFrame",
+								"sync_state": {
+									"table": {
+										"rows": [
+											{
+												"27/05/2020": "27/05/2020",
+												"16:04": "15:45",
+												"BrigitMurtaugh": "3rdman4",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creatin… https://t.co/M8Bnz7lSyE"
+											},
+											{
+												"27/05/2020": "27/05/2020",
+												"16:04": "01:06",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @virtualmlnet: Coming up this Friday, join @briacht and @ljquintanilla for a comprehensive and fun #mlnet workshop! https://t.co/7VjFDiF…"
+											},
+											{
+												"27/05/2020": "27/05/2020",
+												"16:04": "00:24",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @mehdilaarej: @coolcsh @BrigitMurtaugh @runfaster2000 @cecilphillip Very keen to start learning spark on .net thank you very much for sh…"
+											},
+											{
+												"27/05/2020": "26/05/2020",
+												"16:04": "22:43",
+												"BrigitMurtaugh": "mehdilaarej",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@coolcsh @BrigitMurtaugh @runfaster2000 @cecilphillip Very keen to start learning spark on .net thank you very much for sharing"
+											},
+											{
+												"27/05/2020": "26/05/2020",
+												"16:04": "22:02",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @MikeDoesBigData: Check out @BrigitMurtaugh presenting part 2 on #DotNetForSpark in @ch9. https://t.co/XP481BdxE7"
+											},
+											{
+												"27/05/2020": "26/05/2020",
+												"16:04": "22:01",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @colombod: Watch it, time well spent https://t.co/Pfw86FywQ8"
+											},
+											{
+												"27/05/2020": "26/05/2020",
+												"16:04": "21:03",
+												"BrigitMurtaugh": "MikeDoesBigData",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Check out @BrigitMurtaugh presenting part 2 on #DotNetForSpark in @ch9. https://t.co/XP481BdxE7"
+											},
+											{
+												"27/05/2020": "26/05/2020",
+												"16:04": "20:03",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @coolcsh: So both part 1 and part 2 of our On .NET #DotNetForSpark series are now available: https://t.co/1EZkGpIWwh and https://t.co/os…"
+											},
+											{
+												"27/05/2020": "26/05/2020",
+												"16:04": "19:51",
+												"BrigitMurtaugh": "coolcsh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "So both part 1 and part 2 of our On .NET #DotNetForSpark series are now available: https://t.co/1EZkGpIWwh and… https://t.co/2NxHk4kZSy"
+											},
+											{
+												"27/05/2020": "26/05/2020",
+												"16:04": "19:34",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Hey friends! 😊 Check out part 2 of our On .NET #DotNetForSpark series where we run some awesome code samples using… https://t.co/2wt95gduTq"
+											},
+											{
+												"27/05/2020": "26/05/2020",
+												"16:04": "18:10",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @MikeDoesBigData: The #DotNetForSpark demo notebooks and T-SQL script of James' and my session #MSBuild #INT130 on #AzureSynapse are ava…"
+											},
+											{
+												"27/05/2020": "21/05/2020",
+												"16:04": "18:49",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @amiee_lo: ✨ Check out our blog post on how you can get started using Project Tye - an experimental tool for #DotNet that makes developi…"
+											},
+											{
+												"27/05/2020": "21/05/2020",
+												"16:04": "14:33",
+												"BrigitMurtaugh": "PaddyFink",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "hey @BrigitMurtaugh,  It is possible to write Databricks notebook in C#? Is it possible to deploy an app build with… https://t.co/YYewBRTsmB"
+											},
+											{
+												"27/05/2020": "19/05/2020",
+												"16:04": "19:59",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @MikeDoesBigData: Join James Baker and me at #MSBuild for 'Running cost effective #bigdata workloads with #AzureSynapse and #AzureDataLa…"
+											},
+											{
+												"27/05/2020": "19/05/2020",
+												"16:04": "16:44",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @dotnet: ...empowering developers with #dotNET experience or code bases to participate in the world of big data analytics, this episode…"
+											},
+											{
+												"27/05/2020": "15/05/2020",
+												"16:04": "17:42",
+												"BrigitMurtaugh": "dotnet",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "...empowering developers with #dotNET experience or code bases to participate in the world of big data analytics, t… https://t.co/MbV3e6ZGju"
+											},
+											{
+												"27/05/2020": "13/05/2020",
+												"16:04": "21:12",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @dotnet: Join @BrigitMurtaugh and @runfaster2000 for ...   Data processing with .NET for Apache Spark 🚀  https://t.co/fZ1rxLMYRv #ondotn…"
+											},
+											{
+												"27/05/2020": "13/05/2020",
+												"16:04": "19:38",
+												"BrigitMurtaugh": "dotnet",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Join @BrigitMurtaugh and @runfaster2000 for ...   Data processing with .NET for Apache Spark 🚀… https://t.co/VLhhdXhBko"
+											},
+											{
+												"27/05/2020": "12/05/2020",
+												"16:04": "22:15",
+												"BrigitMurtaugh": "TylerLeonhardt",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@SkyTheLine @sydneysmithreal @BrigitMurtaugh Take a look at the `Add-Type` cmdlet :)  https://t.co/ViU4Qiosw3  Powe… https://t.co/GQa4PLesXo"
+											},
+											{
+												"27/05/2020": "12/05/2020",
+												"16:04": "22:09",
+												"BrigitMurtaugh": "ajdinzutic",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@sydneysmithreal @BrigitMurtaugh @TylerLeonhardt Powershell scripts will work with c#?! Man i do move you guys!"
+											},
+											{
+												"27/05/2020": "12/05/2020",
+												"16:04": "22:05",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @MikeDoesBigData: @BrigitMurtaugh's part 1 of her #OnDotNET session about data processing with #DotNet and #ApacheSpark is now on @ch9 #…"
+											},
+											{
+												"27/05/2020": "12/05/2020",
+												"16:04": "22:01",
+												"BrigitMurtaugh": "MikeDoesBigData",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh's part 1 of her #OnDotNET session about data processing with #DotNet and #ApacheSpark is now on… https://t.co/yapp5Pk0Zf"
+											},
+											{
+												"27/05/2020": "12/05/2020",
+												"16:04": "21:59",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@SkyTheLine And if you were curious about VB support in .NET, this is a great post: https://t.co/2cpvJsApTD"
+											},
+											{
+												"27/05/2020": "12/05/2020",
+												"16:04": "21:57",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@SkyTheLine Sure! For questions about Powershell and Powershell roadmap in .NET, I'll bring in @TylerLeonhardt and @sydneysmithreal :)"
+											},
+											{
+												"27/05/2020": "12/05/2020",
+												"16:04": "22:05",
+												"BrigitMurtaugh": "sydneysmithreal",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh @SkyTheLine @TylerLeonhardt @SkyTheLine you may want to give https://t.co/Dz7a1amjOx a look and let… https://t.co/22RiqbVL44"
+											},
+											{
+												"27/05/2020": "12/05/2020",
+												"16:04": "21:21",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@SkyTheLine Hi! Are you looking for a Powershell and VB roadmap for .NET for Spark support specifically? Or a Power… https://t.co/v9JW3CRnfl"
+											},
+											{
+												"27/05/2020": "12/05/2020",
+												"16:04": "21:35",
+												"BrigitMurtaugh": "ajdinzutic",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh Powershell please :) i love the power haha"
+											},
+											{
+												"27/05/2020": "12/05/2020",
+												"16:04": "18:52",
+												"BrigitMurtaugh": "ajdinzutic",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh hi there :) is there a roadmap for DotNet? I mean in powershell core 7 wer huge changes. Also in Do… https://t.co/ndUblM5dzW"
+											},
+											{
+												"27/05/2020": "12/05/2020",
+												"16:04": "18:39",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @jonsequitur: Data processing with .NET for Apache Spark https://t.co/d89SOgIZaP via @ch9"
+											},
+											{
+												"27/05/2020": "12/05/2020",
+												"16:04": "18:38",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "So glad you enjoyed it! 🙂 https://t.co/nE93HD6NFl"
+											},
+											{
+												"27/05/2020": "12/05/2020",
+												"16:04": "17:08",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @ch9: Data processing with .NET for Apache Spark | On .NET https://t.co/2Jiay94fua"
+											},
+											{
+												"27/05/2020": "12/05/2020",
+												"16:04": "17:07",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@runfaster2000 @amiee_lo It was a lot of fun for me too! It was a great experience getting to be part of On .Net :)"
+											},
+											{
+												"27/05/2020": "12/05/2020",
+												"16:04": "17:05",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @runfaster2000: @BrigitMurtaugh @amiee_lo It was fun making the video with you! I learned a lot about Spark."
+											},
+											{
+												"27/05/2020": "12/05/2020",
+												"16:04": "16:42",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Hey friends! Check out the latest episode of #OnDotNET to see some big data fun with #DotNetForSpark 😁 And pssst, t… https://t.co/g8vpun4y9C"
+											},
+											{
+												"27/05/2020": "12/05/2020",
+												"16:04": "16:58",
+												"BrigitMurtaugh": "runfaster2000",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh @amiee_lo It was fun making the video with you! I learned a lot about Spark."
+											},
+											{
+												"27/05/2020": "12/05/2020",
+												"16:04": "17:36",
+												"BrigitMurtaugh": "thomasclaudiush",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh Last year I did a bit with Scala and Hadoop, but I never used Spark.   Great video, I enjoyed watch… https://t.co/TLILL7MVzS"
+											},
+											{
+												"27/05/2020": "08/05/2020",
+												"16:04": "18:23",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @3rdman4: With .NET for Apache Spark 0.11.0 being released, I've also update my #docker images for Linux and Windows on the docker hub.…"
+											},
+											{
+												"27/05/2020": "08/05/2020",
+												"16:04": "13:28",
+												"BrigitMurtaugh": "3rdman4",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "With .NET for Apache Spark 0.11.0 being released, I've also update my #docker images for Linux and Windows on the d… https://t.co/43VXbnamOM"
+											},
+											{
+												"27/05/2020": "06/05/2020",
+												"16:04": "19:36",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @briacht: Asgard Systems is using #mlnet for demand forecasting in grocery stores in Romania, and in one year they saved over 24 million…"
+											},
+											{
+												"27/05/2020": "05/05/2020",
+												"16:04": "19:06",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@chrisAmelinckx Hi Chris! Where is your backend data stored? You should be able to read in data from a variety of s… https://t.co/9UPMh5MBsy"
+											},
+											{
+												"27/05/2020": "06/05/2020",
+												"16:04": "02:22",
+												"BrigitMurtaugh": "chrisAmelinckx",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh Great, giving that a try currently. Sources are JSON on S3 through ElasticSearch, Sql Server and Postgres tables."
+											},
+											{
+												"27/05/2020": "02/05/2020",
+												"16:04": "02:34",
+												"BrigitMurtaugh": "chrisAmelinckx",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Hi @BrigitMurtaugh - is it possible to use #DotNetForSpark to fetch data joined from multiple backends with… https://t.co/bHvZNuyaTI"
+											},
+											{
+												"27/05/2020": "30/04/2020",
+												"16:04": "18:08",
+												"BrigitMurtaugh": "ddskier",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "ICYMI - Help shape the future of deep learning in .NET | .NET Blog https://t.co/obMPoKlZfF by @BrigitMurtaugh… https://t.co/lsquAHQKSf"
+											},
+											{
+												"27/05/2020": "27/04/2020",
+												"16:04": "23:51",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Have you had a chance to check out our quick deep learning survey yet? 🙂 https://t.co/b1m98zugnk"
+											},
+											{
+												"27/05/2020": "28/04/2020",
+												"16:04": "16:56",
+												"BrigitMurtaugh": "David_Crook1",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh @coolcsh Be great to have access to all the data manipulation, reading etc similar to pandas too.… https://t.co/30NdtFZF6I"
+											},
+											{
+												"27/05/2020": "27/04/2020",
+												"16:04": "23:51",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @dotnet: We’d 💙 to learn more about your current or prospective usage of deep learning in .NET through a quick 10-minute survey. Read mo…"
+											},
+											{
+												"27/05/2020": "23/04/2020",
+												"16:04": "22:01",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @dotnet: Get started with .NET for Apache Spark  https://t.co/dabZsX1Iow #dotnet #spark #bigdata"
+											},
+											{
+												"27/05/2020": "23/04/2020",
+												"16:04": "21:57",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @alexslotte: We're happy to announce that @briacht and @ljquintanilla  will be delivering an in-depth virtual https://t.co/nVJ13flxcC wo…"
+											},
+											{
+												"27/05/2020": "22/04/2020",
+												"16:04": "18:39",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@sumitgaara @mcbeniwal @realDotNetDave @jeremylikness Thank you! We appreciate you taking the survey and the awesom… https://t.co/eRMBdy7lks"
+											},
+											{
+												"27/05/2020": "22/04/2020",
+												"16:04": "14:00",
+												"BrigitMurtaugh": "BySaschaBaumann",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "📰 NEWS  'Help us shape the future of deep learning in .NET'  Article by Brigit Murtaugh &lt;@BrigitMurtaugh&gt; via… https://t.co/M8827MflTN"
+											},
+											{
+												"27/05/2020": "21/04/2020",
+												"16:04": "20:03",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @MikeDoesBigData: Your opportunity to provide some feedback on #MachineLearning in #DotNet https://t.co/yMekqn9Kd7"
+											},
+											{
+												"27/05/2020": "21/04/2020",
+												"16:04": "20:03",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @MikeDoesBigData: Please upvote the feature request and contact @Databricks if you would like to see #DotNETForSpark built into #Databri…"
+											},
+											{
+												"27/05/2020": "21/04/2020",
+												"16:04": "18:33",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@mcbeniwal @realDotNetDave @jeremylikness A great thing for .NET devs to do :-)"
+											},
+											{
+												"27/05/2020": "22/04/2020",
+												"16:04": "05:41",
+												"BrigitMurtaugh": "sumitgaara",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh @mcbeniwal @realDotNetDave @jeremylikness Completed survey. Let us know we community can help with… https://t.co/giDCuNMxfs"
+											},
+											{
+												"27/05/2020": "21/04/2020",
+												"16:04": "18:32",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@realDotNetDave @jeremylikness It's always fascinating to see how .NET devs and enterprises can span a whole spectr… https://t.co/gVwWXLfKOm"
+											},
+											{
+												"27/05/2020": "21/04/2020",
+												"16:04": "18:38",
+												"BrigitMurtaugh": "realDotNetDave",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh @jeremylikness Will do!"
+											},
+											{
+												"27/05/2020": "21/04/2020",
+												"16:04": "18:24",
+												"BrigitMurtaugh": "mcbeniwal",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@realDotNetDave @BrigitMurtaugh @jeremylikness We just learn deeply :)"
+											},
+											{
+												"27/05/2020": "21/04/2020",
+												"16:04": "18:02",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@realDotNetDave @jeremylikness That's also valuable feedback (we have that option in the survey)! Some .NET devs ar… https://t.co/ArUFrmbREv"
+											},
+											{
+												"27/05/2020": "21/04/2020",
+												"16:04": "18:23",
+												"BrigitMurtaugh": "realDotNetDave",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh @jeremylikness Well, I am working on a contract with a fortune 25 company and they are so behind, t… https://t.co/ZSJVtjjqW1"
+											},
+											{
+												"27/05/2020": "21/04/2020",
+												"16:04": "17:36",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Hey .NET developers!🙂 We'd love to hear about your current or prospective use cases for deep learning in this quick… https://t.co/3Qo3EDvsus"
+											},
+											{
+												"27/05/2020": "21/04/2020",
+												"16:04": "17:56",
+												"BrigitMurtaugh": "realDotNetDave",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh @jeremylikness We don't use deep learning :-("
+											},
+											{
+												"27/05/2020": "20/04/2020",
+												"16:04": "22:13",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": ".NET support in Databricks is a common question for the #DotNetForSpark team. If you'd like .NET support in Databri… https://t.co/1TTVzZkf7m"
+											},
+											{
+												"27/05/2020": "20/04/2020",
+												"16:04": "22:50",
+												"BrigitMurtaugh": "NdobaBahunde",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh Voted. Thank you @databricks"
+											},
+											{
+												"27/05/2020": "22/04/2020",
+												"16:04": "22:32",
+												"BrigitMurtaugh": "neo_fr3oon",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh voted"
+											},
+											{
+												"27/05/2020": "16/04/2020",
+												"16:04": "20:44",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @dotnet: Let's venture into the exciting world of big data analytics for #dotNET devs in @BrigitMurtaugh's latest post .NET for Apache S…"
+											},
+											{
+												"27/05/2020": "16/04/2020",
+												"16:04": "20:44",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @MikeDoesBigData: Good read about #DotNetForSpark!   .NET for Apache Spark brings enterprise coders and big data pros to the same table…"
+											},
+											{
+												"27/05/2020": "16/04/2020",
+												"16:04": "20:43",
+												"BrigitMurtaugh": "dotnet",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Let's venture into the exciting world of big data analytics for #dotNET devs in @BrigitMurtaugh's latest post .NET… https://t.co/3I8KSWtZ6t"
+											},
+											{
+												"27/05/2020": "16/04/2020",
+												"16:04": "18:14",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @maryjofoley: Microsoft's .NET for Apache Spark brings enterprise coders and big data pros to the same table: https://t.co/tetDXeMd05 (b…"
+											},
+											{
+												"27/05/2020": "15/04/2020",
+												"16:04": "00:21",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @docsmsft: Does Tom Nook read technical documentation on infrastructure? 🤔"
+											},
+											{
+												"27/05/2020": "14/04/2020",
+												"16:04": "18:05",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @andrewbrust: Today in my @ZDNet Big on #Data column: '@dotnet for @ApacheSpark brings enterprise coders and big data pros to the same t…"
+											},
+											{
+												"27/05/2020": "14/04/2020",
+												"16:04": "18:05",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Check out this fantastic article about #DotNetForSpark 😁 https://t.co/YcYaW6XoxA"
+											},
+											{
+												"27/05/2020": "14/04/2020",
+												"16:04": "23:50",
+												"BrigitMurtaugh": "Filippo_Rott",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh IMHO, the project has the potential 2 be a game-changer with some nice additions, as: - a Linq flav… https://t.co/CZvyZcvU5Q"
+											},
+											{
+												"27/05/2020": "09/04/2020",
+												"16:04": "18:44",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@givenscj Thank you very much!! It was a pleasure presenting to this group :)"
+											},
+											{
+												"27/05/2020": "09/04/2020",
+												"16:04": "18:41",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Glad I could help refresh your knowledge :) https://t.co/xVjQ8nc2NG"
+											},
+											{
+												"27/05/2020": "09/04/2020",
+												"16:04": "18:42",
+												"BrigitMurtaugh": "givenscj",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh Well done, very concise and to the point."
+											},
+											{
+												"27/05/2020": "09/04/2020",
+												"16:04": "17:04",
+												"BrigitMurtaugh": "givenscj",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Listening to @BrigitMurtaugh talk about some #microsoft #apache #spark development goodness...ya know...as a refresher :)"
+											},
+											{
+												"27/05/2020": "03/04/2020",
+												"16:04": "18:37",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@NdobaBahunde Thanks for your question🙂 Please reach out to @databricks to let them know you'd like to see .NET notebooks."
+											},
+											{
+												"27/05/2020": "02/04/2020",
+												"16:04": "18:46",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @BySaschaBaumann: 📰 NEWS  '.NET for Apache® Spark™ In-Memory DataFrame Support'  Article by Brigit Murtaugh &lt;@BrigitMurtaugh&gt; via @Micro…"
+											},
+											{
+												"27/05/2020": "02/04/2020",
+												"16:04": "14:30",
+												"BrigitMurtaugh": "BySaschaBaumann",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "📰 NEWS  '.NET for Apache® Spark™ In-Memory DataFrame Support'  Article by Brigit Murtaugh &lt;@BrigitMurtaugh&gt; via… https://t.co/oDMnv1uuRL"
+											},
+											{
+												"27/05/2020": "30/03/2020",
+												"16:04": "20:31",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@borgdylan You can use both the traditional Spark SQL DataFrame and the in-memory DataFrame in your apps. But only… https://t.co/FJA1NV2lYv"
+											},
+											{
+												"27/05/2020": "31/03/2020",
+												"16:04": "16:02",
+												"BrigitMurtaugh": "borgdylan",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh Yes it does."
+											},
+											{
+												"27/05/2020": "30/03/2020",
+												"16:04": "16:34",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Want to learn about one of our newest .NET for Apache Spark features? Check out our blog post about the awesome new… https://t.co/dRa51qVoaW"
+											},
+											{
+												"27/05/2020": "30/03/2020",
+												"16:04": "20:08",
+												"BrigitMurtaugh": "borgdylan",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh Does the in memory data frame offer integration with spark directly?"
+											},
+											{
+												"27/05/2020": "03/04/2020",
+												"16:04": "13:15",
+												"BrigitMurtaugh": "NdobaBahunde",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh .NET notebook on Azure Databricks soon? Thanks"
+											},
+											{
+												"27/05/2020": "27/03/2020",
+												"16:04": "00:45",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @RahulPotharaju: Do you want to work on building a world-class Spark offering? We work on Azure Synapse Analytics and we're hiring :)…"
+											},
+											{
+												"27/05/2020": "23/03/2020",
+												"16:04": "21:17",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @condrong: Any of you want to join DevDiv and work ML and BigData? https://t.co/lp6poWSBgf"
+											},
+											{
+												"27/05/2020": "18/03/2020",
+												"16:04": "21:00",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @3rdman4: Yes, you can use .NET for #ApacheSpark  with Entity Framework to write your streaming #data to #databases. Here is how: https:…"
+											},
+											{
+												"27/05/2020": "18/03/2020",
+												"16:04": "21:00",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@alexslotte You can read data from EventHub using .NET for Spark! Please see https://t.co/QP6Dobyhus and… https://t.co/rcff5DvWyv"
+											},
+											{
+												"27/05/2020": "18/03/2020",
+												"16:04": "15:51",
+												"BrigitMurtaugh": "3rdman4",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Yes, you can use .NET for #ApacheSpark  with Entity Framework to write your streaming #data to #databases. Here is… https://t.co/CsoHWizVTt"
+											},
+											{
+												"27/05/2020": "18/03/2020",
+												"16:04": "14:50",
+												"BrigitMurtaugh": "alexslotte",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh do you know if there are EventHub connectors to Apache Spark .NET? I can't seem to be able to find… https://t.co/xCI5XBvNDS"
+											},
+											{
+												"27/05/2020": "13/03/2020",
+												"16:04": "21:19",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@amiee_lo I have to say, Smoothie is a pretty cute name for a cat"
+											},
+											{
+												"27/05/2020": "13/03/2020",
+												"16:04": "21:32",
+												"BrigitMurtaugh": "amiee_lo",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh Omg have you seen smoothie the cat’s instagram?? If not, pleasseeeee check out that beautiful kitty’s page!! 😻"
+											},
+											{
+												"27/05/2020": "12/03/2020",
+												"16:04": "17:12",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @jaltma: World: To have a successful WFH day, start your day with a shower, coffee, go outside, get some exercise. Have a nice morning a…"
+											},
+											{
+												"27/05/2020": "12/03/2020",
+												"16:04": "17:10",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @dotNetConfSpain: #DotNet2020 is coming! 🤩 The most important .NET conference in Spain is back! Watch this video to see what we have in…"
+											},
+											{
+												"27/05/2020": "11/03/2020",
+												"16:04": "18:37",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @MaximRouiller: Want to impact what's going to be in #mlnet? Here's your chance to answer a survey. Tell us what you want to see.  #mach…"
+											},
+											{
+												"27/05/2020": "11/03/2020",
+												"16:04": "18:13",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @ikasliwal: me and my coworkers logging into all of our meetings remotely for the next couple of weeks https://t.co/fpOYiHJLcl"
+											},
+											{
+												"27/05/2020": "11/03/2020",
+												"16:04": "01:43",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @condrong: Hey, are you building Microservices in .NET? If so, can you take my quick survey? https://t.co/6ctykoqeHY"
+											},
+											{
+												"27/05/2020": "06/03/2020",
+												"16:04": "18:55",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @condrong: dotnetPMTeam.Add(@amiee_lo);  Really happy Amiee is joining the .NET team. Go follow her or say hi or something :).  p.s. dot…"
+											},
+											{
+												"27/05/2020": "04/03/2020",
+												"16:04": "22:59",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@briacht Means a lot coming from one of the best ML experts 🥳🤩"
+											},
+											{
+												"27/05/2020": "04/03/2020",
+												"16:04": "22:57",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @briacht: The best person to learn about Big Data in .NET from. 😄 @BrigitMurtaugh"
+											},
+											{
+												"27/05/2020": "04/03/2020",
+												"16:04": "22:52",
+												"BrigitMurtaugh": "briacht",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "The best person to learn about Big Data in .NET from. 😄 @BrigitMurtaugh https://t.co/jdOWjk78xq"
+											},
+											{
+												"27/05/2020": "04/03/2020",
+												"16:04": "19:42",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @dotNetConfSpain: It's time to reveal another confirmed speaker! 📢 Brigit Murtaugh, .NET Program Manager at @Microsoft, will be joining…"
+											},
+											{
+												"27/05/2020": "04/03/2020",
+												"16:04": "19:42",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @dotNetConfSpain: Es hora de desvelar nuestra segunda ponente confirmada! 📢 Brigit Murtaugh, .NET Program Manager en @Microsoft, estará…"
+											},
+											{
+												"27/05/2020": "04/03/2020",
+												"16:04": "17:02",
+												"BrigitMurtaugh": "LaylaCodesIt",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@EdCharbeneau @sadukie @chrisholland @ExceptionNotFnd @IrisClasson @ashleymcnamara @TaelurAlexis @fakalieva… https://t.co/9YOrRvcvek"
+											},
+											{
+												"27/05/2020": "04/03/2020",
+												"16:04": "16:59",
+												"BrigitMurtaugh": "EdCharbeneau",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@sadukie @chrisholland @ExceptionNotFnd @IrisClasson @ashleymcnamara @TaelurAlexis @fakalieva @quorralyne… https://t.co/i57dJBbNdU"
+											},
+											{
+												"27/05/2020": "04/03/2020",
+												"16:04": "11:40",
+												"BrigitMurtaugh": "dotNetConfSpain",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "It's time to reveal another confirmed speaker! 📢 Brigit Murtaugh, .NET Program Manager at @Microsoft, will be joini… https://t.co/WqbWsg2tXP"
+											},
+											{
+												"27/05/2020": "04/03/2020",
+												"16:04": "11:40",
+												"BrigitMurtaugh": "dotNetConfSpain",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Es hora de desvelar nuestra segunda ponente confirmada! 📢 Brigit Murtaugh, .NET Program Manager en @Microsoft, esta… https://t.co/wvFBrQOKXC"
+											},
+											{
+												"27/05/2020": "03/03/2020",
+												"16:04": "18:01",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @dotNetConfSpain: ¡Primer ponente de la #DotNet2020 confirmado! 📢👨‍💻 Scott Hanselman, Partner Program Manager en @Microsoft, será el enc…"
+											},
+											{
+												"27/05/2020": "03/03/2020",
+												"16:04": "00:27",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @briacht: Check out the latest release of #mlnet Model Builder, which has 2 awesome new features: image classification training in Azure…"
+											},
+											{
+												"27/05/2020": "02/03/2020",
+												"16:04": "22:12",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @dotnet: Last week we released two exciting new features in ML .NET Model Builder! You can now 1️⃣ , train image classification models i…"
+											},
+											{
+												"27/05/2020": "26/02/2020",
+												"16:04": "21:09",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@Peter_Bons @IvanRodrigu3z @dotnet You would need to reach out to @databricks to get that notebooks support - pleas… https://t.co/MdnXBL1tzu"
+											},
+											{
+												"27/05/2020": "25/02/2020",
+												"16:04": "23:32",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@Peter_Bons @IvanRodrigu3z @dotnet Today, .NET devs have two options for running .NET for Apache Spark queries in n… https://t.co/5AZNUN69hH"
+											},
+											{
+												"27/05/2020": "26/02/2020",
+												"16:04": "07:04",
+												"BrigitMurtaugh": "Peter_Bons",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh @IvanRodrigu3z @dotnet It does, thanks! How about Azure Databricks?"
+											},
+											{
+												"27/05/2020": "23/02/2020",
+												"16:04": "22:32",
+												"BrigitMurtaugh": "andrew_sears",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@MikeDoesBigData @AndrejMedic @dotnet @BrigitMurtaugh @databricks Any plans for U-SQL support @MikeDoesBigData or d… https://t.co/K9i8iuw2jg"
+											},
+											{
+												"27/05/2020": "23/02/2020",
+												"16:04": "22:16",
+												"BrigitMurtaugh": "MikeDoesBigData",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@AndrejMedic @dotnet @BrigitMurtaugh you can use #DotNetForSpark today in #AzureDatabricks for batch jobs. The Gith… https://t.co/VYV6ljruNK"
+											},
+											{
+												"27/05/2020": "22/02/2020",
+												"16:04": "10:07",
+												"BrigitMurtaugh": "AndrejMedic",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@dotnet @BrigitMurtaugh Any plans for .Net support in #Azure Databricks?"
+											},
+											{
+												"27/05/2020": "21/02/2020",
+												"16:04": "23:48",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@WaldemarSA1 @bysaschabaumann Thanks for reading &amp; for your question! @RahulPotharaju @MikeDoesBigData any feedback here?"
+											},
+											{
+												"27/05/2020": "22/02/2020",
+												"16:04": "01:48",
+												"BrigitMurtaugh": "BySaschaBaumann",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh @WaldemarSA1 @RahulPotharaju @MikeDoesBigData Thanks @BrigitMurtaugh 😊"
+											},
+											{
+												"27/05/2020": "22/02/2020",
+												"16:04": "14:54",
+												"BrigitMurtaugh": "WaldemarSA1",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh @bysaschabaumann @RahulPotharaju @MikeDoesBigData I think I missed the fact that all the methods wi… https://t.co/5VVN0HoGRq"
+											},
+											{
+												"27/05/2020": "21/02/2020",
+												"16:04": "23:46",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @__exyi: @dotnet @BrigitMurtaugh This seems to be the post: https://t.co/GDJGW06l1u"
+											},
+											{
+												"27/05/2020": "21/02/2020",
+												"16:04": "23:46",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@__exyi @dotnet Yep, that's it! :)"
+											},
+											{
+												"27/05/2020": "21/02/2020",
+												"16:04": "23:46",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@IvanRodrigu3z @dotnet Here it is: https://t.co/trN39dkN5d 😊 Let me know if you have any other questions!"
+											},
+											{
+												"27/05/2020": "24/02/2020",
+												"16:04": "07:24",
+												"BrigitMurtaugh": "Peter_Bons",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh @IvanRodrigu3z @dotnet Interesting. Can I use this for interactive querying or do I need to wait fo… https://t.co/yx9NliEekI"
+											},
+											{
+												"27/05/2020": "24/02/2020",
+												"16:04": "12:13",
+												"BrigitMurtaugh": "albertod",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh @IvanRodrigu3z @dotnet An idea to boost the adoption: resurrect the old #Microsoft #Linq implementa… https://t.co/NWbzS3rEFe"
+											},
+											{
+												"27/05/2020": "21/02/2020",
+												"16:04": "23:42",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @dotnet: .NET for Apache Spark makes the world of big data analytics, accessible to #dotNET devs. Explore what, why, and how, in this te…"
+											},
+											{
+												"27/05/2020": "21/02/2020",
+												"16:04": "23:42",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Have you had a chance to check out my latest blog post?! We'd love to hear your thoughts about #DotNetForSpark 😁… https://t.co/Elow0PMxzK"
+											},
+											{
+												"27/05/2020": "21/02/2020",
+												"16:04": "23:39",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@amiee_lo @dotnet Excited to have you join the team! And I see in your bio that we're gaining a fellow cat lover?! Amazing 😻"
+											},
+											{
+												"27/05/2020": "21/02/2020",
+												"16:04": "21:26",
+												"BrigitMurtaugh": "WaldemarSA1",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@bysaschabaumann @BrigitMurtaugh Thanks for the article. Is it possible to Load a dataframe asynchronously? I want… https://t.co/TG2uB1gaWc"
+											},
+											{
+												"27/05/2020": "21/02/2020",
+												"16:04": "16:20",
+												"BrigitMurtaugh": "__exyi",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@dotnet @BrigitMurtaugh This seems to be the post: https://t.co/GDJGW06l1u"
+											},
+											{
+												"27/05/2020": "21/02/2020",
+												"16:04": "16:13",
+												"BrigitMurtaugh": "IvanRodrigu3z",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@dotnet @BrigitMurtaugh Where is the post link?"
+											},
+											{
+												"27/05/2020": "21/02/2020",
+												"16:04": "16:12",
+												"BrigitMurtaugh": "dotnet",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": ".NET for Apache Spark makes the world of big data analytics, accessible to #dotNET devs. Explore what, why, and how… https://t.co/o1q3vz3CQO"
+											},
+											{
+												"27/05/2020": "21/02/2020",
+												"16:04": "01:13",
+												"BrigitMurtaugh": "sarahguthals",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@julielerman @LaylaCodesIt @Beelzenef_ @_bron_ @KarenPayneMVP @girlyngeek @shanselman @coding_mama @KathleenDollard… https://t.co/oerx4BRL4c"
+											},
+											{
+												"27/05/2020": "20/02/2020",
+												"16:04": "23:14",
+												"BrigitMurtaugh": "julielerman",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@LaylaCodesIt @Beelzenef_ @_bron_ @KarenPayneMVP @girlyngeek @shanselman @coding_mama @KathleenDollard @gotheap… https://t.co/BP6hPm7W0r"
+											},
+											{
+												"27/05/2020": "20/02/2020",
+												"16:04": "22:42",
+												"BrigitMurtaugh": "JustAskClaire",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@LaylaCodesIt @Beelzenef_ @julielerman @_bron_ @KarenPayneMVP @girlyngeek @shanselman @coding_mama @KathleenDollard… https://t.co/ikX5jINaVU"
+											},
+											{
+												"27/05/2020": "20/02/2020",
+												"16:04": "22:20",
+												"BrigitMurtaugh": "LaylaCodesIt",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@Beelzenef_ @julielerman @_bron_ @KarenPayneMVP @girlyngeek @shanselman @coding_mama @KathleenDollard @gotheap… https://t.co/NoBPajLTEz"
+											},
+											{
+												"27/05/2020": "20/02/2020",
+												"16:04": "20:10",
+												"BrigitMurtaugh": "Beelzenef_",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@julielerman @_bron_ @KarenPayneMVP @girlyngeek @shanselman @coding_mama @KathleenDollard @gotheap @maoni0… https://t.co/QLLz86FXRm"
+											},
+											{
+												"27/05/2020": "19/02/2020",
+												"16:04": "22:45",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @bysaschabaumann: 📰 NEWS  'Using .NET for Apache® Spark™ to Analyze Log Data'  Article by Brigit Murtaugh &lt;@BrigitMurtaugh&gt; via @Microso…"
+											},
+											{
+												"27/05/2020": "19/02/2020",
+												"16:04": "15:00",
+												"BrigitMurtaugh": "BySaschaBaumann",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "📰 NEWS  'Using .NET for Apache® Spark™ to Analyze Log Data'  Article by Brigit Murtaugh &lt;@BrigitMurtaugh&gt; via… https://t.co/DTUN5LiXCq"
+											},
+											{
+												"27/05/2020": "19/02/2020",
+												"16:04": "04:38",
+												"BrigitMurtaugh": "thecaitcode",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@sqlenergy @mairacw @azahara_fergui @Beelzenef_ @shanselman @coding_mama @KathleenDollard @gotheap @maoni0… https://t.co/exthsAejCt"
+											},
+											{
+												"27/05/2020": "19/02/2020",
+												"16:04": "03:04",
+												"BrigitMurtaugh": "sqlenergy",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@mairacw @azahara_fergui @Beelzenef_ @shanselman @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga… https://t.co/AyTZnXJOnM"
+											},
+											{
+												"27/05/2020": "19/02/2020",
+												"16:04": "02:53",
+												"BrigitMurtaugh": "sqlenergy",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@julielerman @KarenPayneMVP @girlyngeek @shanselman @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga… https://t.co/A99QoMuMPY"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "23:19",
+												"BrigitMurtaugh": "JustAskClaire",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@julielerman @_bron_ @KarenPayneMVP @girlyngeek @shanselman @coding_mama @KathleenDollard @gotheap @maoni0… https://t.co/S4kQy1q08G"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "22:44",
+												"BrigitMurtaugh": "chixcancode",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@julielerman @KarenPayneMVP @girlyngeek @shanselman @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga… https://t.co/jcVq932FUo"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "22:40",
+												"BrigitMurtaugh": "alyzande",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@girlyngeek @shanselman @julielerman @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga @mika_dumont… https://t.co/TuLsOY12XS"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "22:40",
+												"BrigitMurtaugh": "alyzande",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@shanselman @julielerman @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga @mika_dumont @mairacw @briacht… https://t.co/yhUylMTxQa"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "22:37",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@borgdylan @MikeDoesBigData @RahulPotharaju Hi Dylan! I just DM'd you regarding this question."
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "22:07",
+												"BrigitMurtaugh": "AlexBlount",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@SweekritiS @shanselman @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga @mika_dumont @mairacw @briacht… https://t.co/GE6jsHWvAg"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "21:46",
+												"BrigitMurtaugh": "Beelzenef_",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@coding_mama @julielerman @KarenPayneMVP @girlyngeek @shanselman @KathleenDollard @gotheap @maoni0 @LadyNaggaga… https://t.co/jX5EwSRjZA"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "21:26",
+												"BrigitMurtaugh": "coding_mama",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@julielerman @KarenPayneMVP @girlyngeek @shanselman @KathleenDollard @gotheap @maoni0 @LadyNaggaga @mika_dumont… https://t.co/GANuCgJLo7"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "21:14",
+												"BrigitMurtaugh": "JustAskClaire",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@julielerman @KarenPayneMVP @girlyngeek @shanselman @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga… https://t.co/V1wnyiz8Vj"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "21:14",
+												"BrigitMurtaugh": "julielerman",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@KarenPayneMVP @girlyngeek @shanselman @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga @mika_dumont… https://t.co/BeRyRkO1xr"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "21:06",
+												"BrigitMurtaugh": "julielerman",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@_bron_ @KarenPayneMVP @girlyngeek @shanselman @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga… https://t.co/yY9G40TTib"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "20:56",
+												"BrigitMurtaugh": "_bron_",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@julielerman @shanselman @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga @mika_dumont @mairacw @briacht… https://t.co/rMOJ9Z79cF"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "20:54",
+												"BrigitMurtaugh": "_bron_",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@julielerman @KarenPayneMVP @girlyngeek @shanselman @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga… https://t.co/aohlvukjt2"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "20:52",
+												"BrigitMurtaugh": "julielerman",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@KarenPayneMVP @girlyngeek @shanselman @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga @mika_dumont… https://t.co/41gNHv9fKm"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "20:51",
+												"BrigitMurtaugh": "KarenPayneMVP",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@julielerman @girlyngeek @shanselman @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga @mika_dumont… https://t.co/QOn5mvyJCl"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "20:50",
+												"BrigitMurtaugh": "julielerman",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@KarenPayneMVP @girlyngeek @shanselman @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga @mika_dumont… https://t.co/PA6V10KgZa"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "20:49",
+												"BrigitMurtaugh": "KarenPayneMVP",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@girlyngeek @shanselman @julielerman @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga @mika_dumont… https://t.co/JpTRQHqUUK"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "20:47",
+												"BrigitMurtaugh": "adymitruk",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@shanselman @julielerman @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga @mika_dumont @mairacw @briacht… https://t.co/4nbntXL6VV"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "20:45",
+												"BrigitMurtaugh": "adymitruk",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@shanselman @julielerman @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga @mika_dumont @mairacw @briacht… https://t.co/xAgu43tkbj"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "20:40",
+												"BrigitMurtaugh": "SheSharpDev",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@shanselman @Beelzenef_ @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga @mika_dumont @mairacw @briacht… https://t.co/AQrjoJqsaj"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "20:38",
+												"BrigitMurtaugh": "girlyngeek",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@shanselman @julielerman @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga @mika_dumont @mairacw @briacht… https://t.co/Y8QUZ3qMxo"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "19:57",
+												"BrigitMurtaugh": "breakpointv16",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@julielerman @shanselman @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga @mika_dumont @mairacw @briacht… https://t.co/HoIF3zk8pY"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "19:53",
+												"BrigitMurtaugh": "shanselman",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@julielerman @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga @mika_dumont @mairacw @briacht… https://t.co/jBr6NosbnH"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "19:50",
+												"BrigitMurtaugh": "julielerman",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@shanselman @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga @mika_dumont @mairacw @briacht… https://t.co/W3piDrD8cd"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "18:46",
+												"BrigitMurtaugh": "girlyngeek",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@chixcancode @shanselman @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga @mika_dumont @mairacw @briacht… https://t.co/Ai0y84dd53"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "18:35",
+												"BrigitMurtaugh": "chixcancode",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@shanselman @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga @mika_dumont @mairacw @briacht… https://t.co/Gj5c5qrST2"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "18:25",
+												"BrigitMurtaugh": "taraw",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@shanselman @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga @mika_dumont @mairacw @briacht… https://t.co/Nq8vct443f"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "17:05",
+												"BrigitMurtaugh": "SweekritiS",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@shanselman @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga @mika_dumont @mairacw @briacht… https://t.co/aiO63QizHR"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "12:41",
+												"BrigitMurtaugh": "mortadelageek",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@Beelzenef_ @shanselman @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga @mika_dumont @mairacw @briacht… https://t.co/irX5xkSE7R"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "11:08",
+												"BrigitMurtaugh": "alyzande",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@shanselman @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga @mika_dumont @mairacw @briacht… https://t.co/TF3lG192F6"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "08:31",
+												"BrigitMurtaugh": "LindaLawtonDK",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@shanselman @Beelzenef_ @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga @mika_dumont @mairacw @briacht… https://t.co/9vyMI9EOPc"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "08:24",
+												"BrigitMurtaugh": "mairacw",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@azahara_fergui @Beelzenef_ @shanselman @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga @mika_dumont… https://t.co/E84eLeH0AL"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "08:21",
+												"BrigitMurtaugh": "azahara_fergui",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@Beelzenef_ @shanselman @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga @mika_dumont @mairacw @briacht… https://t.co/QHg1kK0XkM"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "07:49",
+												"BrigitMurtaugh": "shanselman",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@Beelzenef_ @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga @mika_dumont @mairacw @briacht… https://t.co/T68WUX3zkw"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "07:38",
+												"BrigitMurtaugh": "Beelzenef_",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@shanselman @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga @mika_dumont @mairacw @briacht… https://t.co/qzeGFFyGx6"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "06:57",
+												"BrigitMurtaugh": "_bron_",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@shanselman @coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga @mika_dumont @mairacw @briacht… https://t.co/LvESQXh9Zl"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "06:43",
+												"BrigitMurtaugh": "shanselman",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga @mika_dumont @mairacw @briacht @lyrichardson01… https://t.co/zDzHemecDS"
+											},
+											{
+												"27/05/2020": "18/02/2020",
+												"16:04": "06:40",
+												"BrigitMurtaugh": "shanselman",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@coding_mama @KathleenDollard @gotheap @maoni0 @LadyNaggaga @mika_dumont @mairacw @briacht @lyrichardson01… https://t.co/YpSedb7AoC"
+											},
+											{
+												"27/05/2020": "14/02/2020",
+												"16:04": "23:03",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@borgdylan @MikeDoesBigData @RahulPotharaju Oh and I see you said you have your compiler on GitHub, awesome!!"
+											},
+											{
+												"27/05/2020": "16/02/2020",
+												"16:04": "06:28",
+												"BrigitMurtaugh": "borgdylan",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh @MikeDoesBigData @RahulPotharaju It's borgdylan/dylandotnet. Most modern code is in the compiler su… https://t.co/AoC3vkvnxI"
+											},
+											{
+												"27/05/2020": "14/02/2020",
+												"16:04": "23:02",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@borgdylan Thanks so much for the feedback, glad to hear it 😁 if you have any cool apps or ideas for use cases, we’… https://t.co/4wpVwXVlOA"
+											},
+											{
+												"27/05/2020": "17/02/2020",
+												"16:04": "07:09",
+												"BrigitMurtaugh": "borgdylan",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh @MikeDoesBigData @RahulPotharaju Is there a way not to have to restart spark when I use UDFs? If I… https://t.co/nkpDf7E82w"
+											},
+											{
+												"27/05/2020": "14/02/2020",
+												"16:04": "23:00",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @borgdylan: @BrigitMurtaugh I live .net for Apache spark! Thanks for not using any c# specific features. That let me use my own programm…"
+											},
+											{
+												"27/05/2020": "14/02/2020",
+												"16:04": "20:12",
+												"BrigitMurtaugh": "ljquintanilla",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@saltnburnem @sadukie @oliagavrysh Adding @vogueandcode @BrigitMurtaugh to this list"
+											},
+											{
+												"27/05/2020": "14/02/2020",
+												"16:04": "06:36",
+												"BrigitMurtaugh": "borgdylan",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh I live .net for Apache spark! Thanks for not using any c# specific features. That let me use my own… https://t.co/6xIBgxaGQV"
+											},
+											{
+												"27/05/2020": "12/02/2020",
+												"16:04": "21:28",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @shanselman: @kwuchu So Iheanyi and I got on Skype and talked for 45 min and got him set up good...AND RECORDED THE CALL!  'How to set u…"
+											},
+											{
+												"27/05/2020": "10/02/2020",
+												"16:04": "21:19",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @MikeDoesBigData: A cool #DotNetForSpark example. Try it out with your favorite #ApacheSpark engine such as #azureSynapse, #HDInsight, #…"
+											},
+											{
+												"27/05/2020": "10/02/2020",
+												"16:04": "21:19",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @JaymeSingleton1: Are you a #dotNET developer interested in the exciting world of big #data?! https://t.co/ahR2MgMALS"
+											},
+											{
+												"27/05/2020": "10/02/2020",
+												"16:04": "18:07",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Are you a .NET developer interested in the exciting world of big data?! Check out our latest blog post… https://t.co/vHpphDR6zW"
+											},
+											{
+												"27/05/2020": "06/02/2020",
+												"16:04": "18:36",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @LadyNaggaga: .NET Notebooks Preview 2 is here! Preview 2 includes 🎉@PowerShell_Team, @nteractio, and a new tool. Check out our blog to…"
+											},
+											{
+												"27/05/2020": "06/02/2020",
+												"16:04": "18:35",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @coolcsh: New announcements in our support for Jupyter notebooks for .NET: https://t.co/QGWYjEKNxv. Please try this and give us feedback."
+											},
+											{
+												"27/05/2020": "28/01/2020",
+												"16:04": "05:52",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @3rdman4: #DotNetForSpark 0.8.0 with #VSCode on #Ubuntu and how to get df.Collect() working with the #Docker image: https://t.co/r7TfvHX…"
+											},
+											{
+												"27/05/2020": "21/01/2020",
+												"16:04": "16:24",
+												"BrigitMurtaugh": "3rdman4",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "#DotNetForSpark 0.8.0 with #VSCode on #Ubuntu and how to get df.Collect() working with the #Docker image:… https://t.co/KiE3UQKgo5"
+											},
+											{
+												"27/05/2020": "13/01/2020",
+												"16:04": "22:47",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @eoincarrigan: Flight out of Chicago cancelled so I’ve been put up in the O’Hare Comfort Inn. Lady at reception said I’m in the ‘Boardro…"
+											},
+											{
+												"27/05/2020": "13/01/2020",
+												"16:04": "22:38",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @dotnet: for (int i=0; i &lt; 100; i++) {     Console.WriteLine(“I should be working from home!”); } https://t.co/3dQLZCRTBr"
+											},
+											{
+												"27/05/2020": "10/01/2020",
+												"16:04": "20:13",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @SQLServer: #AzureSynapseAnalytics brings together enterprise data warehousing and big data analytics, giving you the freedom to query d…"
+											},
+											{
+												"27/05/2020": "05/01/2020",
+												"16:04": "19:43",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @3rdman4: Happy New Year &amp; the answer to the Christmas puzzle!  https://t.co/W8w8Yb70zt  #DotNetForSpark #Docker #dotnetcore #ApacheSpar…"
+											},
+											{
+												"27/05/2020": "03/01/2020",
+												"16:04": "14:09",
+												"BrigitMurtaugh": "3rdman4",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Happy New Year &amp; the answer to the Christmas puzzle!  https://t.co/W8w8Yb70zt  #DotNetForSpark #Docker #dotnetcore… https://t.co/7FtelDvaW8"
+											},
+											{
+												"27/05/2020": "03/01/2020",
+												"16:04": "00:02",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @dotnet: Make data exploration easy... ICYMI, we announced a preview of a DataFrame type for .NET.   Get a solid overview of this new ty…"
+											},
+											{
+												"27/05/2020": "21/12/2019",
+												"16:04": "14:58",
+												"BrigitMurtaugh": "3rdman4",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Just released a new article about #DotNetForSpark, UDF, VS2019 and #Docker for #Microsoft Windows. It also contains… https://t.co/euFcsknEFC"
+											},
+											{
+												"27/05/2020": "18/12/2019",
+												"16:04": "00:03",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @alexslotte: I'm glad to see that the DataFrame type is out in preview. Looking forward to play around with it and create some Jupyter s…"
+											},
+											{
+												"27/05/2020": "18/12/2019",
+												"16:04": "00:02",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @dotnet: Welcome DataFrame, an API that makes it easier to explore and process data. https://t.co/BAguwE0ePp"
+											},
+											{
+												"27/05/2020": "17/12/2019",
+												"16:04": "20:36",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @mika_dumont: Hey .NET developers! We want to know which tools inside Visual Studio will make you even more productive in 2020 ✨!  Take…"
+											},
+											{
+												"27/05/2020": "11/12/2019",
+												"16:04": "21:20",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@isaac_abraham @shahedC We'd love to work with you to get some more F# samples! If you'd like to collaborate furthe… https://t.co/UIiQ0Iy1jk"
+											},
+											{
+												"27/05/2020": "11/12/2019",
+												"16:04": "21:19",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@damienguard Thanks Damien 😊 Based on this Tweet: https://t.co/GVu1VSjYVY, you can use LINQ inside your UDF and on… https://t.co/U3fQt1m3Lt"
+											},
+											{
+												"27/05/2020": "11/12/2019",
+												"16:04": "22:27",
+												"BrigitMurtaugh": "RahulPotharaju",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh @damienguard @MikeDoesBigData Thanks @BrigitMurtaugh! This is the right approach."
+											},
+											{
+												"27/05/2020": "11/12/2019",
+												"16:04": "19:20",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "CC: @RahulPotharaju @MikeDoesBigData"
+											},
+											{
+												"27/05/2020": "11/12/2019",
+												"16:04": "19:10",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @3rdman4: Version 0.7.0 of my dotnet-spark #Docker image is now available. It adds #Windows container support for UDF debugging with #vs…"
+											},
+											{
+												"27/05/2020": "11/12/2019",
+												"16:04": "19:09",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Want to see #dotnet for Apache Spark in action? Check out the sample apps on our GitHub repo to see some awesome ex… https://t.co/aIlf1I6XA3"
+											},
+											{
+												"27/05/2020": "11/12/2019",
+												"16:04": "19:20",
+												"BrigitMurtaugh": "damienguard",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh Nice. How's the LINQ side of this coming along?"
+											},
+											{
+												"27/05/2020": "11/12/2019",
+												"16:04": "19:38",
+												"BrigitMurtaugh": "isaac_abraham",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh @shahedC Nice! We might be interested in helping out with some F# more samples as well!"
+											},
+											{
+												"27/05/2020": "11/12/2019",
+												"16:04": "18:55",
+												"BrigitMurtaugh": "3rdman4",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Version 0.7.0 of my dotnet-spark #Docker image is now available. It adds #Windows container support for UDF debuggi… https://t.co/thO1qWq16q"
+											},
+											{
+												"27/05/2020": "26/11/2019",
+												"16:04": "22:36",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @coolcsh: @BrigitMurtaugh It will get easier to try this out soon with Azure Synapse."
+											},
+											{
+												"27/05/2020": "26/11/2019",
+												"16:04": "22:36",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @coolcsh: Want to use Apache Spark with #dotnet. Check out this awesome video series by @BrigitMurtaugh: https://t.co/bh77gYxHx4"
+											},
+											{
+												"27/05/2020": "26/11/2019",
+												"16:04": "22:15",
+												"BrigitMurtaugh": "coolcsh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh It will get easier to try this out soon with Azure Synapse."
+											},
+											{
+												"27/05/2020": "26/11/2019",
+												"16:04": "22:13",
+												"BrigitMurtaugh": "coolcsh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Want to use Apache Spark with #dotnet. Check out this awesome video series by @BrigitMurtaugh: https://t.co/bh77gYxHx4"
+											},
+											{
+												"27/05/2020": "21/11/2019",
+												"16:04": "21:13",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @MikeDoesBigData: The video and slides of my #DotNETforSpark #MSIgnite presentation #THR3110 are now at https://t.co/RmmM0lYuSP includin…"
+											},
+											{
+												"27/05/2020": "16/11/2019",
+												"16:04": "17:43",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @jayminsuthar93: @coolcsh @RahulPotharaju @BrigitMurtaugh It's amazing to see that every new technology and framwroks Microsoft making b…"
+											},
+											{
+												"27/05/2020": "16/11/2019",
+												"16:04": "16:18",
+												"BrigitMurtaugh": "jayminsuthar93",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@coolcsh @RahulPotharaju @BrigitMurtaugh It's amazing to see that every new technology and framwroks Microsoft maki… https://t.co/1zxtlHaMCS"
+											},
+											{
+												"27/05/2020": "15/11/2019",
+												"16:04": "20:55",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @alexslotte: Curious of all the cool things you can do with #mlnet in #jupyter? To help you get started, I've created some sample notebo…"
+											},
+											{
+												"27/05/2020": "15/11/2019",
+												"16:04": "18:37",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @coolcsh: If you want to try out Apache Spark with #dotnet please go to: https://t.co/Qi8vrYdb9n and click request a demo and then selec…"
+											},
+											{
+												"27/05/2020": "15/11/2019",
+												"16:04": "18:15",
+												"BrigitMurtaugh": "coolcsh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "If you want to try out Apache Spark with #dotnet please go to: https://t.co/Qi8vrYdb9n and click request a demo and… https://t.co/58uJplRmUu"
+											},
+											{
+												"27/05/2020": "13/11/2019",
+												"16:04": "18:11",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @dotnet: The learning from #MSIgnite keeps on rollin' - Check out the @CoolCSH / @SHanselman App Dev session on the present and future o…"
+											},
+											{
+												"27/05/2020": "13/11/2019",
+												"16:04": "18:09",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @briacht: Image classification is now available in ML .NET Model Builder! You can locally train image classification models with your ow…"
+											},
+											{
+												"27/05/2020": "11/11/2019",
+												"16:04": "18:21",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@Scott_Logic Great, thank you! I just sent Jon a LinkedIn connection request."
+											},
+											{
+												"27/05/2020": "09/11/2019",
+												"16:04": "10:00",
+												"BrigitMurtaugh": "stevejna",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @BrigitMurtaugh: Attention .NET devs interested in big data: We now have an interactive C# experience for… https://t.co/bDWw3vETbd"
+											},
+											{
+												"27/05/2020": "09/11/2019",
+												"16:04": "00:55",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@jeanepaul So glad to hear it!! Please let me know if you have any other questions 🙂"
+											},
+											{
+												"27/05/2020": "09/11/2019",
+												"16:04": "00:54",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @jeanepaul: @BrigitMurtaugh Thank you! Tried it now and the cli installation and configuration worked the first time like magic!"
+											},
+											{
+												"27/05/2020": "08/11/2019",
+												"16:04": "22:05",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @sabahshariq: 💡Learn how to use .NET for Apache Spark ❇ to process batches of data, real-time streams, machine learning, and ad-hoc quer…"
+											},
+											{
+												"27/05/2020": "08/11/2019",
+												"16:04": "22:04",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@Scott_Logic I just found this blog post, thanks for taking the time to try out .NET for Spark and writing about it… https://t.co/zkslB2qLTz"
+											},
+											{
+												"27/05/2020": "11/11/2019",
+												"16:04": "17:35",
+												"BrigitMurtaugh": "Scott_Logic",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh Hi Brigit – thanks for getting in touch! Jon would like to take you up on your kind offer. Here's h… https://t.co/1ErmtWpeZu"
+											},
+											{
+												"27/05/2020": "08/11/2019",
+												"16:04": "21:55",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @matmanhatan: Possible d’utiliser #jupyter avec #dotnetcore notamment avec .NET for #Apache #Spark super nouvelle 👍🏽 https://t.co/AaEnJw…"
+											},
+											{
+												"27/05/2020": "08/11/2019",
+												"16:04": "18:33",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @JPendao: RT @BrigitMurtaugh: Attention .NET devs interested in big data: We now have an interactive C# experience for #DotNetForSpark i…"
+											},
+											{
+												"27/05/2020": "08/11/2019",
+												"16:04": "18:32",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@tonyvca Did you have a chance to look over the guide on our GitHub repo: https://t.co/CZHIAEdLTg? Or were you look… https://t.co/VDF4SVGz1z"
+											},
+											{
+												"27/05/2020": "08/11/2019",
+												"16:04": "18:30",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@jeanepaul Great question! Have you had a chance to look over our doc explaining Azure Databricks deployment:… https://t.co/RGirgsrRrg"
+											},
+											{
+												"27/05/2020": "09/11/2019",
+												"16:04": "00:41",
+												"BrigitMurtaugh": "jeanepaul",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh Thank you! Tried it now and the cli installation and configuration worked the first time like magic!"
+											},
+											{
+												"27/05/2020": "08/11/2019",
+												"16:04": "18:00",
+												"BrigitMurtaugh": "JPendao",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @BrigitMurtaugh: Attention .NET devs interested in big data: We now have an interactive C# experience for… https://t.co/BFopKnKUyn"
+											},
+											{
+												"27/05/2020": "08/11/2019",
+												"16:04": "16:09",
+												"BrigitMurtaugh": "zabirauf",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@jonsequitur @colombod @LadyNaggaga @BrigitMurtaugh @RahulPotharaju @CGravill @captainsafia @cgranade @rickasaurus… https://t.co/oKzCwy9QEb"
+											},
+											{
+												"27/05/2020": "08/11/2019",
+												"16:04": "04:30",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @RahulPotharaju: Our session at #PASSSummit on #AzureSynapse+its DW capabilities+all the #DotNetForSpark demos (including Delta Lake 0.4…"
+											},
+											{
+												"27/05/2020": "08/11/2019",
+												"16:04": "04:07",
+												"BrigitMurtaugh": "RahulPotharaju",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Our session at #PASSSummit on #AzureSynapse+its DW capabilities+all the #DotNetForSpark demos (including Delta Lake… https://t.co/wBByIHv0kb"
+											},
+											{
+												"27/05/2020": "08/11/2019",
+												"16:04": "01:42",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "So glad you’ve tried out the notebooks and also liked the tutorials! Be sure to let us know how it goes when you tr… https://t.co/ALKSq6MShs"
+											},
+											{
+												"27/05/2020": "08/11/2019",
+												"16:04": "08:40",
+												"BrigitMurtaugh": "jeanepaul",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh btw, I have question, where do I ask for .net spark? my question is, first, I am still learning spa… https://t.co/KYbo8t7CzP"
+											},
+											{
+												"27/05/2020": "08/11/2019",
+												"16:04": "11:26",
+												"BrigitMurtaugh": "2020_developer",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh Is there a simple tutorial for .NET for Spark using the Jupyter Notebook on Azure?"
+											},
+											{
+												"27/05/2020": "08/11/2019",
+												"16:04": "00:09",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Who's excited for .NET + notebooks, and the ability to start writing .NET for Apache Spark code in Jupyter notebook… https://t.co/vTni16mN5c"
+											},
+											{
+												"27/05/2020": "08/11/2019",
+												"16:04": "01:29",
+												"BrigitMurtaugh": "jeanepaul",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh Tried this one already but I yet to try dotnet for spark! Thanks for the tutorials BTW!"
+											},
+											{
+												"27/05/2020": "07/11/2019",
+												"16:04": "21:01",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @joelcochran: This is very high on my list of things to learn. 2020 is going to be a big year! https://t.co/KcFxjDYPhD"
+											},
+											{
+												"27/05/2020": "07/11/2019",
+												"16:04": "21:00",
+												"BrigitMurtaugh": "gregdeyoung",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @BrigitMurtaugh: Attention .NET devs interested in big data: We now have an interactive C# experience for… https://t.co/0DhvwiSjfo"
+											},
+											{
+												"27/05/2020": "07/11/2019",
+												"16:04": "20:53",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @MikeDoesBigData: Thanks to the awesome #DotNet teams awesome .NET notebook experience. it definitively makes it a breeze to use #DotNet…"
+											},
+											{
+												"27/05/2020": "07/11/2019",
+												"16:04": "17:38",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Thank you 😀 And it definitely opens up a great new door for https://t.co/h9qPlZbHXG as well! The detailed blog post… https://t.co/WRC72b1aH4"
+											},
+											{
+												"27/05/2020": "07/11/2019",
+												"16:04": "17:34",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @RahulPotharaju: Wrapped up more cool demos with @saveenr/@GomatamPriyanka. Hint: We'll show you how to 'manage' Big Data using #AzureSy…"
+											},
+											{
+												"27/05/2020": "07/11/2019",
+												"16:04": "17:34",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Reaction we love to see!! https://t.co/uvlu79icnT"
+											},
+											{
+												"27/05/2020": "07/11/2019",
+												"16:04": "17:11",
+												"BrigitMurtaugh": "colombod",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@jonsequitur @LadyNaggaga @BrigitMurtaugh @RahulPotharaju @CGravill @captainsafia @cgranade @rickasaurus @zabirauf… https://t.co/yqbcuyL7t6"
+											},
+											{
+												"27/05/2020": "07/11/2019",
+												"16:04": "16:59",
+												"BrigitMurtaugh": "jonsequitur",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@colombod @LadyNaggaga @BrigitMurtaugh @RahulPotharaju @CGravill @captainsafia @cgranade And huge thanks to all the… https://t.co/ouj8rMY3Af"
+											},
+											{
+												"27/05/2020": "07/11/2019",
+												"16:04": "15:43",
+												"BrigitMurtaugh": "colombod",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@LadyNaggaga @jonsequitur @BrigitMurtaugh @RahulPotharaju Let's not forget the amazing @CGravill , @captainsafia an… https://t.co/NP41ybJ5CO"
+											},
+											{
+												"27/05/2020": "07/11/2019",
+												"16:04": "04:15",
+												"BrigitMurtaugh": "RahulPotharaju",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Wrapped up more cool demos with @saveenr/@GomatamPriyanka. Hint: We'll show you how to 'manage' Big Data using… https://t.co/5DnxlFbHZo"
+											},
+											{
+												"27/05/2020": "06/11/2019",
+												"16:04": "22:32",
+												"BrigitMurtaugh": "HowardvRooijen",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@RahulPotharaju @BrigitMurtaugh Absolutely!"
+											},
+											{
+												"27/05/2020": "06/11/2019",
+												"16:04": "21:58",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @RahulPotharaju: @HowardvRooijen @BrigitMurtaugh We also have Spark notebook experience ready. Let us know if you want to try it out 🙂"
+											},
+											{
+												"27/05/2020": "06/11/2019",
+												"16:04": "21:57",
+												"BrigitMurtaugh": "RahulPotharaju",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@HowardvRooijen @BrigitMurtaugh We also have Spark notebook experience ready. Let us know if you want to try it out 🙂"
+											},
+											{
+												"27/05/2020": "06/11/2019",
+												"16:04": "21:56",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @HowardvRooijen: This is HUGE! It was my BIG ask at the #mvpsummit #dotnet in Jupyter notebooks. This is a game changer for the .net eco…"
+											},
+											{
+												"27/05/2020": "06/11/2019",
+												"16:04": "21:55",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@NdobaBahunde @dotnet Thank you! We're so excited to bring this interactive notebooks experience to the worlds of big data and ML in .NET 😄"
+											},
+											{
+												"27/05/2020": "06/11/2019",
+												"16:04": "21:54",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @NdobaBahunde: @BrigitMurtaugh @dotnet This is great!!!"
+											},
+											{
+												"27/05/2020": "06/11/2019",
+												"16:04": "19:38",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @colombod: @jonsequitur @shanselman @coolcsh Look https://t.co/zfMr568NDL"
+											},
+											{
+												"27/05/2020": "06/11/2019",
+												"16:04": "19:37",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @teroalhonen: Jupyter Notebooks with .NET https://t.co/7ZmBHliNNu #MSIgnite https://t.co/ykW61sGhCP"
+											},
+											{
+												"27/05/2020": "06/11/2019",
+												"16:04": "19:10",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @colombod: Have you just seen @shanselman  and @coolcsh doing the things with #Jupyter and #Dotnet ar #MSIgnite2019 ?????"
+											},
+											{
+												"27/05/2020": "06/11/2019",
+												"16:04": "19:08",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Attention .NET devs interested in big data: We now have an interactive C# experience for #DotNetForSpark in Jupyter… https://t.co/KLgGcG1g84"
+											},
+											{
+												"27/05/2020": "06/11/2019",
+												"16:04": "21:34",
+												"BrigitMurtaugh": "NdobaBahunde",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh @dotnet This is great!!!"
+											},
+											{
+												"27/05/2020": "07/11/2019",
+												"16:04": "03:43",
+												"BrigitMurtaugh": "miggleness",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh @VisualStudio Jupyter notebook... googled it expecting an ARM based laptop. Then I went... https://t.co/MvXxR1ilHb"
+											},
+											{
+												"27/05/2020": "07/11/2019",
+												"16:04": "10:52",
+												"BrigitMurtaugh": "abhishekcskumar",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh Great work .net team 😀 This will open up new door for ML/.Net"
+											},
+											{
+												"27/05/2020": "06/11/2019",
+												"16:04": "18:35",
+												"BrigitMurtaugh": "LadyNaggaga",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Big thanks to the amazing #dotnet team and our first adopter #AzureSynapseAnalytics, #dotnet for Apache Spark CC :… https://t.co/IYorKanOAX"
+											},
+											{
+												"27/05/2020": "06/11/2019",
+												"16:04": "03:07",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @MikeDoesBigData: you can use LINQ inside your UDF and on 'collected' results with #DotNetForSpark. I assume you would like to use LINQ…"
+											},
+											{
+												"27/05/2020": "05/11/2019",
+												"16:04": "00:23",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @MikeDoesBigData: Come to my demo tomorrow at 12:40pm #MSIgnite #THR3110 to see not just cool #DotNetForSpark notebooks but generally #d…"
+											},
+											{
+												"27/05/2020": "05/11/2019",
+												"16:04": "00:22",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @timheuer: With all the great news from #MSIgnite my team continues to want to improve your @VisualStudio and @Azure experiences.  Care…"
+											},
+											{
+												"27/05/2020": "04/11/2019",
+												"16:04": "18:32",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @RahulPotharaju: BTW, #DotNetForSpark (https://t.co/PyqRr2u3sQ) is available out-of-box (interactive+batch) in #AzureSynapseAnalytics #M…"
+											},
+											{
+												"27/05/2020": "04/11/2019",
+												"16:04": "18:28",
+												"BrigitMurtaugh": "RahulPotharaju",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "BTW, #DotNetForSpark (https://t.co/PyqRr2u3sQ) is available out-of-box (interactive+batch) in… https://t.co/FnG3iwC08n"
+											},
+											{
+												"27/05/2020": "01/11/2019",
+												"16:04": "18:34",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @coolcsh: If you are at #Ignite2019 come to @shanselman, @LadyNaggaga and my session on the #dotnet roadmap: https://t.co/jrrUgBcDIw. Lo…"
+											},
+											{
+												"27/05/2020": "01/11/2019",
+												"16:04": "18:34",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @briacht: Fun fact I had to rewrite half of this article when I lost hours worth of changes due to syncing errors and a fatal computer c…"
+											},
+											{
+												"27/05/2020": "31/10/2019",
+												"16:04": "17:58",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @aloria: Haha get it because OCT 31 = DEC 25 https://t.co/PfK4ja7Z6P"
+											},
+											{
+												"27/05/2020": "31/10/2019",
+												"16:04": "17:57",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @coolcsh: If you would like to hang out with the #dotnet team at #MSIgnite2019 sign up here: https://t.co/B6cl6FJfQo"
+											},
+											{
+												"27/05/2020": "31/10/2019",
+												"16:04": "13:00",
+												"BrigitMurtaugh": "mseduardon",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @BrigitMurtaugh: Interested in .NET for Apache Spark? Visit  and fill out 'Request a Demo.' Our team would love… https://t.co/YUY8ytfXMQ"
+											},
+											{
+												"27/05/2020": "30/10/2019",
+												"16:04": "13:00",
+												"BrigitMurtaugh": "stevejna",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @BrigitMurtaugh: Interested in .NET for Apache Spark? Visit  and fill out 'Request a Demo.' Our team would love… https://t.co/KJxjAdGrGi"
+											},
+											{
+												"27/05/2020": "29/10/2019",
+												"16:04": "21:47",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @mark_olson: Don’t let the fact that you work from home as the only remote employee in your city stop you from making a slack channel fo…"
+											},
+											{
+												"27/05/2020": "29/10/2019",
+												"16:04": "21:42",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@radiomorillo We have a series of 101 videos about .NET for Apache Spark (getting started with big data analytics i… https://t.co/9MNbVUS1xd"
+											},
+											{
+												"27/05/2020": "29/10/2019",
+												"16:04": "20:19",
+												"BrigitMurtaugh": "3rdman4",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "My .NET for Apache Spark docker image has been updated to version 0.6.0. See what's new at https://t.co/6GIlvpr22G… https://t.co/hRfTvLvEV3"
+											},
+											{
+												"27/05/2020": "29/10/2019",
+												"16:04": "08:30",
+												"BrigitMurtaugh": "JPendao",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @BrigitMurtaugh: Interested in .NET for Apache Spark? Visit  and fill out 'Request a Demo.' https://t.co/DuNh0BOZoz"
+											},
+											{
+												"27/05/2020": "28/10/2019",
+												"16:04": "22:30",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Too funny @ryanbooz😂Now when I rewatch/present this demo in the future, I'm going to have a good laugh too!… https://t.co/ddmYdCzOpB"
+											},
+											{
+												"27/05/2020": "28/10/2019",
+												"16:04": "22:15",
+												"BrigitMurtaugh": "ryanbooz",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Can't stop laughing while I watch an #ApacheSpark video by @BrigitMurtaugh. Every time she talks about analyzing 'F… https://t.co/HXuSDQzzF7"
+											},
+											{
+												"27/05/2020": "28/10/2019",
+												"16:04": "20:40",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Interested in .NET for Apache Spark? Visit https://t.co/6sh8Y0awDu and fill out 'Request a Demo.' Our team would lo… https://t.co/KzbynisFLV"
+											},
+											{
+												"27/05/2020": "25/10/2019",
+												"16:04": "01:38",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @tomdale: Just        writing                   some                             J                                a…"
+											},
+											{
+												"27/05/2020": "25/10/2019",
+												"16:04": "01:36",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @LadyNaggaga: git clone + dotnet try  = amazing #interactive documentation!  Great use of  Try .NET by the Polly @nuget package!  Thanks…"
+											},
+											{
+												"27/05/2020": "25/10/2019",
+												"16:04": "01:32",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @shanselman: You might see some tweets about my development talk at @MS_Ignite #msignite in a few weeks. But what you really want to see…"
+											},
+											{
+												"27/05/2020": "23/10/2019",
+												"16:04": "00:19",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @ch9: Todd's daughter is learning C#, and you can too! Check out the tutorials here 👉 https://t.co/LPllxeoIlc 💻🧠 https://t.co/jDTHTDEqYT"
+											},
+											{
+												"27/05/2020": "18/10/2019",
+												"16:04": "03:37",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @jonnysun: i sent all my sims to university &amp; they all became computer scientists &amp; proved they were living in a simulation so i unplugg…"
+											},
+											{
+												"27/05/2020": "17/10/2019",
+												"16:04": "13:40",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @b0rk: sql query steps https://t.co/FnKbZiVIbd"
+											},
+											{
+												"27/05/2020": "17/10/2019",
+												"16:04": "13:18",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @RahulPotharaju: For folks who attended our #DotNetForSpark talk yesterday at the @SparkAISummit you'll find these videos fun! :) https:…"
+											},
+											{
+												"27/05/2020": "17/10/2019",
+												"16:04": "13:18",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Thank you @RahulPotharaju for all of your fantastic work on #DotNetForSpark, we couldn’t do it without you! 😊 https://t.co/IeY9ThHqN8"
+											},
+											{
+												"27/05/2020": "16/10/2019",
+												"16:04": "17:38",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @3rdman4: Curious how to debug a .NET for Apache Spark solution with Visual Studio, without the need to set up Apache Spark yourself? Pl…"
+											},
+											{
+												"27/05/2020": "16/10/2019",
+												"16:04": "15:26",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @CAI0901: Thank you so much for your great talk/demo on .NET for Apache Spark. Your explanation on the whole data science ecosystem real…"
+											},
+											{
+												"27/05/2020": "16/10/2019",
+												"16:04": "14:26",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @RahulPotharaju: If you're attending #SparkAISummit 2019 in #Amsterdam, don't miss our talk on .NET for Apache Spark (https://t.co/oLCqn…"
+											},
+											{
+												"27/05/2020": "15/10/2019",
+												"16:04": "03:28",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @aronchick: Use @ProjectJupyter and @code? Do we have a present for you :) | Announcing Support for Native Editing of Jupyter Notebooks…"
+											},
+											{
+												"27/05/2020": "12/10/2019",
+												"16:04": "17:36",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Thanks for sharing, Christine! So glad you enjoyed ☺️ https://t.co/oi0LpVCopd"
+											},
+											{
+												"27/05/2020": "12/10/2019",
+												"16:04": "05:52",
+												"BrigitMurtaugh": "CAI0901",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "What is .NET for Apache Spark? | .NET for Apache Spark 101 [1 of 8] https://t.co/Iu621BO043 via @YouTube thanks for… https://t.co/5ZjvqQDAh9"
+											},
+											{
+												"27/05/2020": "11/10/2019",
+												"16:04": "02:03",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "I don’t think I’ve ever been able to say my work and One Direction go together, so this is a fantastic first https://t.co/3NXouG1AvB"
+											},
+											{
+												"27/05/2020": "11/10/2019",
+												"16:04": "02:02",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @msexcel: We think you're pretty Excel-lent too @Harry_Styles. 👼 https://t.co/aKP4oexxkl"
+											},
+											{
+												"27/05/2020": "09/10/2019",
+												"16:04": "21:19",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Did you know that the .NET for Apache Spark 101 videos can be viewed in 14 different languages?! Check them out on… https://t.co/BFzcEN13T1"
+											},
+											{
+												"27/05/2020": "05/10/2019",
+												"16:04": "13:17",
+												"BrigitMurtaugh": "3rdman4",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Updated #Docker image available for #DotNetForSpark version 0.5.0 For more details check out this related post:… https://t.co/U2TwREf5B0"
+											},
+											{
+												"27/05/2020": "03/10/2019",
+												"16:04": "14:51",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Excited #GHC19 is keeping the Spark #BigData momentum going 🙂 https://t.co/cpVBHwI2ly"
+											},
+											{
+												"27/05/2020": "03/10/2019",
+												"16:04": "14:50",
+												"BrigitMurtaugh": "runfaster2000",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@briacht @h0x0d @BrigitMurtaugh @allison_au @gotheap @victoriagrows @sana_ajani @mika_dumont Wow. That is so awesom… https://t.co/ZTb2e2PBAR"
+											},
+											{
+												"27/05/2020": "03/10/2019",
+												"16:04": "13:50",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @b0rk: sql queries run in this order: https://t.co/OTJEjUuVIE"
+											},
+											{
+												"27/05/2020": "03/10/2019",
+												"16:04": "12:51",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Ready for #GHC19 day 2! Loving the positivity and empowerment throughout the sessions 👩‍💻 (Credit to Jennifer and M… https://t.co/BdCqdkOwvP"
+											},
+											{
+												"27/05/2020": "10/10/2019",
+												"16:04": "17:48",
+												"BrigitMurtaugh": "johndpalm",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh 👏👏👏"
+											},
+											{
+												"27/05/2020": "03/10/2019",
+												"16:04": "06:13",
+												"BrigitMurtaugh": "amandaksilver",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@briacht @BrigitMurtaugh @allison_au @gotheap @victoriagrows @sana_ajani @mika_dumont So sad I couldn’t join you th… https://t.co/eUbVS9IwxV"
+											},
+											{
+												"27/05/2020": "03/10/2019",
+												"16:04": "02:51",
+												"BrigitMurtaugh": "livelovegeek",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@victoriagrows @briacht @BrigitMurtaugh @allison_au @gotheap @sana_ajani @mika_dumont Yes and yes!"
+											},
+											{
+												"27/05/2020": "03/10/2019",
+												"16:04": "02:48",
+												"BrigitMurtaugh": "victoriagrows",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@livelovegeek @briacht @BrigitMurtaugh @allison_au @gotheap @sana_ajani @mika_dumont You’re here!? We need to get coffee!"
+											},
+											{
+												"27/05/2020": "03/10/2019",
+												"16:04": "02:18",
+												"BrigitMurtaugh": "livelovegeek",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@victoriagrows @briacht @BrigitMurtaugh @allison_au @gotheap @sana_ajani @mika_dumont I didn't realize you were here too 💕"
+											},
+											{
+												"27/05/2020": "03/10/2019",
+												"16:04": "02:16",
+												"BrigitMurtaugh": "victoriagrows",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@livelovegeek @briacht @BrigitMurtaugh @allison_au @gotheap @sana_ajani @mika_dumont You too!!!"
+											},
+											{
+												"27/05/2020": "02/10/2019",
+												"16:04": "21:58",
+												"BrigitMurtaugh": "livelovegeek",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@briacht @BrigitMurtaugh @allison_au @gotheap @victoriagrows @sana_ajani @mika_dumont Aww! I miss you all so much 💕"
+											},
+											{
+												"27/05/2020": "02/10/2019",
+												"16:04": "14:49",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @briacht: The amazing women of DevDiv #Microsoft at #GHC19 https://t.co/sQkLbe3Ok2"
+											},
+											{
+												"27/05/2020": "02/10/2019",
+												"16:04": "14:48",
+												"BrigitMurtaugh": "mairacw",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@briacht @BrigitMurtaugh @allison_au @gotheap @victoriagrows @sana_ajani @mika_dumont Have a great conference!"
+											},
+											{
+												"27/05/2020": "02/10/2019",
+												"16:04": "14:28",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @gotheap: Heads up I will be asking all my coworkers what they make when I get back. 😅 @ghc keynote!  'Commit to making 50/50 tech equit…"
+											},
+											{
+												"27/05/2020": "02/10/2019",
+												"16:04": "12:57",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Ready for my first Grace Hopper Conference!!! 🎉 #gracehoppercelebration #GHC2019 #GHC19 #MicrosoftLife https://t.co/cNClHBU5sK"
+											},
+											{
+												"27/05/2020": "02/10/2019",
+												"16:04": "05:47",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "This is so useful!! https://t.co/TwHcnt5Q5g"
+											},
+											{
+												"27/05/2020": "01/10/2019",
+												"16:04": "01:06",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @aspnet: Join us for this week's #ASPNET Community Standup: New .NET Videos with @oliagavrysh and @shanselman   Tuesday | 10 Pacific | 1…"
+											},
+											{
+												"27/05/2020": "26/09/2019",
+												"16:04": "17:43",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @alexfdezsauco: Are you ready for #dotNET for #ApacheSpark? https://t.co/C9LqHDcURt"
+											},
+											{
+												"27/05/2020": "26/09/2019",
+												"16:04": "17:43",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @VSMdev: Fresh on the heels of .NET Core 3.0, #Microsoft's Scott Hanselman unveiled a months-long project to provide entry-level instruc…"
+											},
+											{
+												"27/05/2020": "26/09/2019",
+												"16:04": "17:34",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "My #DotNetForSpark session from #dotNETConf is now on YouTube! Check it out to learn all about #BigData + @dotnet 😄https://t.co/1ohJEaENl7"
+											},
+											{
+												"27/05/2020": "26/09/2019",
+												"16:04": "03:09",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @ch9: 🎬📹THAT'S A WRAP! 🎙️🤓 Thank you so much for tuning into #dotNETConf! 🚀  Playlist is here 👉 https://t.co/BnQvMYRCbE Ch9 sessions are…"
+											},
+											{
+												"27/05/2020": "25/09/2019",
+												"16:04": "18:05",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Jupyter + .NET is in the works! 😁 https://t.co/nBYfCPwcjq"
+											},
+											{
+												"27/05/2020": "25/09/2019",
+												"16:04": "05:05",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @JaymeSingleton1: There's also tons of #gettingstarted videos for #Xamarin, #VisualStudio, #Docker, #mlnet, and Apache #Spark for #dotNE…"
+											},
+											{
+												"27/05/2020": "25/09/2019",
+												"16:04": "05:04",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Thank you so much, Michael! Our #DotNetForSpark team is here to help demystify big data however we can 🙂 https://t.co/uic65XDefM"
+											},
+											{
+												"27/05/2020": "25/09/2019",
+												"16:04": "05:02",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@mcp111 Hi @mcp111! Can you elaborate on what you mean please?"
+											},
+											{
+												"27/05/2020": "25/09/2019",
+												"16:04": "05:05",
+												"BrigitMurtaugh": "mcp111",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh I have 15 years experience in .net. Do you have any suitable opportunities in your team?"
+											},
+											{
+												"27/05/2020": "25/09/2019",
+												"16:04": "04:13",
+												"BrigitMurtaugh": "mcp111",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh do u have any .net opportunities?"
+											},
+											{
+												"27/05/2020": "24/09/2019",
+												"16:04": "22:52",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @tonyvca: .NET for Apache® Spark™ A free, open-source, and cross-platform big data analytics framework https://t.co/mfk0B5MoqQ #dotNETCo…"
+											},
+											{
+												"27/05/2020": "24/09/2019",
+												"16:04": "22:02",
+												"BrigitMurtaugh": "2020_developer",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": ".NET for Apache® Spark™ A free, open-source, and cross-platform big data analytics framework… https://t.co/bulplhPlLo"
+											},
+											{
+												"27/05/2020": "24/09/2019",
+												"16:04": "20:21",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Thank you very much :) https://t.co/uKSOMttUdy"
+											},
+											{
+												"27/05/2020": "24/09/2019",
+												"16:04": "20:20",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Thank you so much for watching 😄 https://t.co/0CMecQJdRU"
+											},
+											{
+												"27/05/2020": "24/09/2019",
+												"16:04": "20:20",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Thank you so much for watching, Alexander! https://t.co/fJYO75V7nv"
+											},
+											{
+												"27/05/2020": "24/09/2019",
+												"16:04": "20:19",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BethMassi Thank you, Beth! You've done such an awesome job organizing everything."
+											},
+											{
+												"27/05/2020": "24/09/2019",
+												"16:04": "20:19",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@DennieDeclercq @sethjuarez Thank you so much! 😀"
+											},
+											{
+												"27/05/2020": "24/09/2019",
+												"16:04": "19:36",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @mcp111: .NET for Apache® Spark™  #dotnetConf https://t.co/LdwRNdOel6"
+											},
+											{
+												"27/05/2020": "24/09/2019",
+												"16:04": "19:36",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Haha, that would've been a good one :-) https://t.co/SDcOU146zK"
+											},
+											{
+												"27/05/2020": "24/09/2019",
+												"16:04": "19:35",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": ".NET for Apache Spark gives you APIs for using Apache Spark from C# and F#! 😁 https://t.co/GHnB9c9MiW"
+											},
+											{
+												"27/05/2020": "24/09/2019",
+												"16:04": "19:33",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @Kobi_DevArtist: https://t.co/yfcOedK2Ym, big data analytics , all .Net loving this. #dotnetconf"
+											},
+											{
+												"27/05/2020": "24/09/2019",
+												"16:04": "18:54",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @DennieDeclercq: @BrigitMurtaugh @sethjuarez Congratulations! You rock!"
+											},
+											{
+												"27/05/2020": "24/09/2019",
+												"16:04": "18:54",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @BethMassi: @BrigitMurtaugh Thank you! You did fantastic."
+											},
+											{
+												"27/05/2020": "24/09/2019",
+												"16:04": "18:54",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @ch9: @BrigitMurtaugh You were fantastic! 🎉🎉🎉"
+											},
+											{
+												"27/05/2020": "24/09/2019",
+												"16:04": "18:37",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @dotnet: Bringing Big Data Analytics through Apache Spark to .NET with @BrigitMurtaugh is happening now @ #dotNETConf. Watch here: https…"
+											},
+											{
+												"27/05/2020": "24/09/2019",
+												"16:04": "18:36",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Officially done with my first #dotNETConf! It was such a blast, thanks to everyone who watched and helped make it p… https://t.co/iVj4j1FJs9"
+											},
+											{
+												"27/05/2020": "24/09/2019",
+												"16:04": "18:39",
+												"BrigitMurtaugh": "ch9",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh You were fantastic! 🎉🎉🎉"
+											},
+											{
+												"27/05/2020": "24/09/2019",
+												"16:04": "18:42",
+												"BrigitMurtaugh": "BethMassi",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh Thank you! You did fantastic."
+											},
+											{
+												"27/05/2020": "24/09/2019",
+												"16:04": "18:45",
+												"BrigitMurtaugh": "DennieDeclercq",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh @sethjuarez Congratulations! You rock!"
+											},
+											{
+												"27/05/2020": "24/09/2019",
+												"16:04": "19:59",
+												"BrigitMurtaugh": "Va_Alexander",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh @ch9 Great delivery Brigit, thank you!"
+											},
+											{
+												"27/05/2020": "24/09/2019",
+												"16:04": "20:02",
+												"BrigitMurtaugh": "Kobi_DevArtist",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh Thanks, you were awesome. 😁"
+											},
+											{
+												"27/05/2020": "24/09/2019",
+												"16:04": "20:03",
+												"BrigitMurtaugh": "senadmeskin",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh Good job. Congrats."
+											},
+											{
+												"27/05/2020": "25/09/2019",
+												"16:04": "04:23",
+												"BrigitMurtaugh": "MikeDaw",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh “Big Data” and all that goes with it is still pretty much a mystery to me, so I really enjoyed your presentation."
+											},
+											{
+												"27/05/2020": "24/09/2019",
+												"16:04": "17:55",
+												"BrigitMurtaugh": "dotnet",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Bringing Big Data Analytics through Apache Spark to .NET with @BrigitMurtaugh is happening now @ #dotNETConf. Watch… https://t.co/qU0mKBx2F0"
+											},
+											{
+												"27/05/2020": "24/09/2019",
+												"16:04": "16:38",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Thank you so much, @RahulPotharaju! It was so fun to put together, and I can’t wait for people to watch them 😁 https://t.co/PVgasphS8b"
+											},
+											{
+												"27/05/2020": "23/09/2019",
+												"16:04": "23:15",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @dotnet: Happening now @ #dotNETConf: What's new in #MLNET with @CesarDelatorre. Watch here: https://t.co/irKAH46tsn https://t.co/AXj5eL…"
+											},
+											{
+												"27/05/2020": "23/09/2019",
+												"16:04": "22:54",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Join me tomorrow at 11am Pacific time to learn about the exciting world of big data analytics in .NET! 😊… https://t.co/4ZclEuOLbr"
+											},
+											{
+												"27/05/2020": "23/09/2019",
+												"16:04": "22:51",
+												"BrigitMurtaugh": "lenadroid",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Check out @BrigitMurtaugh's session on “Bringing Big Data Analytics through Apache Spark to .NET” at @dnetconf tomorrow at 11-11:30am PST."
+											},
+											{
+												"27/05/2020": "23/09/2019",
+												"16:04": "17:09",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Want to combine Apache Spark + @dotnet?? Checkout the brand new .NET for Apache Spark 101 video series to learn all… https://t.co/AQnhvSH7b8"
+											},
+											{
+												"27/05/2020": "24/09/2019",
+												"16:04": "15:38",
+												"BrigitMurtaugh": "RahulPotharaju",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh @dotnet Thank you for your hard work and taking the time to put these together, @BrigitMurtaugh! I… https://t.co/fo0dTp14SC"
+											},
+											{
+												"27/05/2020": "25/09/2019",
+												"16:04": "16:39",
+												"BrigitMurtaugh": "asyncoder",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh @dotnet Great explanation 👌🏻 I'd love to see C# listed among others programming languages to be abl… https://t.co/DaGIQbgOSg"
+											},
+											{
+												"27/05/2020": "23/09/2019",
+												"16:04": "06:19",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @dotnet: It's almost here. #dotNETConf kicks off tomorrow with a fantastic keynote. Watch @SHanselman, @CoolCSH, @JamesMontemagno, @Mads…"
+											},
+											{
+												"27/05/2020": "18/09/2019",
+												"16:04": "05:27",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @shanselman: Like a lot. Like buckle up. Go subscribe AND turn on notifications. Big #dotnetcore surprises coming on YouTube for #CodeNe…"
+											},
+											{
+												"27/05/2020": "18/09/2019",
+												"16:04": "05:24",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @dotnet: 83 speakers are polishing their demos. The 77 session agenda is set to roll for over 40 hours. 200+ local events have been orga…"
+											},
+											{
+												"27/05/2020": "18/09/2019",
+												"16:04": "05:21",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @timheuer: If you haven't seen the .NET YouTube channel for developers, check it out and subscribe today.  The overall .NET team is cont…"
+											},
+											{
+												"27/05/2020": "18/09/2019",
+												"16:04": "05:18",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @Golnaz89: Be sure to subscribe to the .NET Developer YouTube channel:https://t.co/xLMfqbMR1E We are dropping a lot of content soon...li…"
+											},
+											{
+												"27/05/2020": "04/09/2019",
+												"16:04": "06:17",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @cesardelatorre: https://t.co/3isJovnrLx v1.4 Preview (Machine Learning .NET) just released! Detailed Blog Post here: https://t.co/6cpYB…"
+											},
+											{
+												"27/05/2020": "20/08/2019",
+												"16:04": "23:22",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @cecilphillip: Did you know that you can create and consume machine learning models in .NET? 🤯  🔥 In this #OnDotNet episode @briacht &amp; @…"
+											},
+											{
+												"27/05/2020": "20/08/2019",
+												"16:04": "23:20",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@rustd We should choose one for the next team morale event"
+											},
+											{
+												"27/05/2020": "20/08/2019",
+												"16:04": "23:25",
+												"BrigitMurtaugh": "rustd",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh Seaplane by my house next time 😉"
+											},
+											{
+												"27/05/2020": "19/08/2019",
+												"16:04": "12:43",
+												"BrigitMurtaugh": "oceanfish81",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@briacht @BrigitMurtaugh @briacht , how about training people in Ukraine?"
+											},
+											{
+												"27/05/2020": "19/08/2019",
+												"16:04": "12:42",
+												"BrigitMurtaugh": "oceanfish81",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh , please join https://t.co/WtNbZCWASa initiative now! Looking forward for demos on both… https://t.co/cMfjXXTLhJ"
+											},
+											{
+												"27/05/2020": "16/08/2019",
+												"16:04": "06:22",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@rustd Magic? 🤔"
+											},
+											{
+												"27/05/2020": "16/08/2019",
+												"16:04": "16:17",
+												"BrigitMurtaugh": "rustd",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh Yes. Figure it out😊"
+											},
+											{
+												"27/05/2020": "16/08/2019",
+												"16:04": "05:14",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @cesardelatorre: Packed room, all live demos worked and had great questions and feedback after our #MLNET session at #VSLive 2019 at Red…"
+											},
+											{
+												"27/05/2020": "16/08/2019",
+												"16:04": "05:14",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @briacht: #tbt to when I got a 52% in my Artificial Intelligence class.. Now I’m teaching people about machine learning (and of course u…"
+											},
+											{
+												"27/05/2020": "12/08/2019",
+												"16:04": "22:21",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Want to help us improve https://t.co/h9qPlZbHXG? Take this survey to let us know a bit about how you use, or plan t… https://t.co/DBOt8BAdRa"
+											},
+											{
+												"27/05/2020": "19/08/2019",
+												"16:04": "12:36",
+												"BrigitMurtaugh": "oceanfish81",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh Any survey for UI/UX tools, for data science/engineering tools (WinForms, WPF, Avalonia)?"
+											},
+											{
+												"27/05/2020": "12/08/2019",
+												"16:04": "22:21",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "#tbt, this was so much fun! https://t.co/sBybi9Kl5Z"
+											},
+											{
+												"27/05/2020": "10/08/2019",
+												"16:04": "08:14",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@SamAshMorris Welcome to the world of tech Twitter 👩‍💻"
+											},
+											{
+												"27/05/2020": "10/08/2019",
+												"16:04": "00:13",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @ScisharpS: @Microsoft just released ML .NET 1.3.1 which now is based on our TensorFlow .NET library. Check out their release info at th…"
+											},
+											{
+												"27/05/2020": "09/08/2019",
+												"16:04": "19:15",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@RahulPotharaju Thanks @RahulPotharaju, it’s great to be part of the team 😊"
+											},
+											{
+												"27/05/2020": "09/08/2019",
+												"16:04": "19:15",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Thank you 😄 https://t.co/m1nRxm4CN6"
+											},
+											{
+												"27/05/2020": "09/08/2019",
+												"16:04": "15:21",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "RT @RahulPotharaju: Great to have you on-board @BrigitMurtaugh! 😀 https://t.co/6J4EUaTJBO"
+											},
+											{
+												"27/05/2020": "09/08/2019",
+												"16:04": "10:50",
+												"BrigitMurtaugh": "RahulPotharaju",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Great to have you on-board @BrigitMurtaugh! 😀 https://t.co/6J4EUaTJBO"
+											},
+											{
+												"27/05/2020": "09/08/2019",
+												"16:04": "05:17",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "I’m focusing on big data with .NET for Apache Spark, and I’ve been participating in the open source community with… https://t.co/SN1mDS3rSH"
+											},
+											{
+												"27/05/2020": "09/08/2019",
+												"16:04": "05:11",
+												"BrigitMurtaugh": "BrigitMurtaugh",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "Hi everyone, excited to participate in the world of tech Twitter! #FirstTweet"
+											},
+											{
+												"27/05/2020": "09/08/2019",
+												"16:04": "19:06",
+												"BrigitMurtaugh": "rustd",
+												"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "@BrigitMurtaugh welcome!"
+											}
+										],
+										"schema": {
+											"27/05/2020": "string",
+											"16:04": "string",
+											"BrigitMurtaugh": "string",
+											"RT @3rdman4: Recently I've been approached by quite a few people asking me, if I would be willing to share the #code for creating my #Dotne…": "string"
+										}
+									},
+									"isSummary": false,
+									"language": "scala"
+								},
+								"persist_state": {
+									"view": {
+										"type": "details",
+										"chartOptions": {
+											"chartType": "bar",
+											"aggregationType": "count",
+											"categoryFieldKeys": [
+												"27/05/2020"
+											],
+											"seriesFieldKeys": [
+												"27/05/2020"
+											],
+											"isStacked": false
+										}
+									}
+								}
+							}
+						}
+					},
+					"kernelspec": {
+						"name": "synapse_pyspark",
+						"display_name": "Synapse PySpark"
+					},
+					"language_info": {
+						"name": "python"
+					},
+					"a365ComputeOptions": {
+						"id": "/subscriptions/03766bec-6c31-4851-aa3c-233d9b60aeaf/resourceGroups/uiap-d-si-synapse/providers/Microsoft.Synapse/workspaces/uiap-synapse-ws/bigDataPools/azsynapsepool",
+						"name": "azsynapsepool",
+						"type": "Spark",
+						"endpoint": "https://uiap-synapse-ws.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/azsynapsepool",
+						"auth": {
+							"type": "AAD",
+							"authResource": "https://dev.azuresynapse.net"
+						},
+						"sparkVersion": "2.4",
+						"nodeCount": 10,
+						"cores": 8,
+						"memory": 56,
+						"extraHeader": null
+					}
+				},
+				"cells": [
+					{
+						"cell_type": "code",
+						"source": [
+							"storage_account_name = 'uiapdstrg'\r\n",
+							"storage_account_access_key = 'pkIDrODojGiVHEBg+sqFq7n9OszQG7irJ/8VS+XSfyo/3uUYhYGgxgLDTP3ZzixlyU5R2Q0gL7+c6YVtNkYCjQ=='\r\n",
+							"spark.conf.set('fs.azure.account.key.' + storage_account_name + '.blob.core.windows.net', storage_account_access_key)"
+						],
+						"attachments": null,
+						"outputs": [],
+						"execution_count": 3
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							},
+							"collapsed": true
+						},
+						"source": [
+							"blob_container = 'azsynapsecondemo'\r\n",
+							"filePath = \"wasbs://\" + blob_container + \"@\" + storage_account_name + \".blob.core.windows.net/BrigitMurtaughTweets.csv\"\r\n",
+							"salesDf = spark.read.format(\"csv\").load(filePath, inferSchema = True, header = True)"
+						],
+						"attachments": null,
+						"outputs": [],
+						"execution_count": 4
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							},
+							"collapsed": false
+						},
+						"source": [
+							"display(salesDf)"
+						],
+						"attachments": null,
+						"outputs": [],
+						"execution_count": 5
+					}
+				]
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/default')]",
+			"type": "Microsoft.Synapse/workspaces/managedVirtualNetworks",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/default/synapse-ws-sql--uiap-synapse-ws')]",
+			"type": "Microsoft.Synapse/workspaces/managedVirtualNetworks/managedPrivateEndpoints",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"privateLinkResourceId": "/subscriptions/03766bec-6c31-4851-aa3c-233d9b60aeaf/resourceGroups/uiap-d-si-synapse/providers/Microsoft.Synapse/workspaces/uiap-synapse-ws",
+				"groupId": "sql",
+				"fqdns": [
+					"uiap-synapse-ws.c1368bf0-637e-49c2-8edf-1701bb756fa4.sql.azuresynapse.net"
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/managedVirtualNetworks/default')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/default/synapse-ws-sqlOnDemand--uiap-synapse-ws')]",
+			"type": "Microsoft.Synapse/workspaces/managedVirtualNetworks/managedPrivateEndpoints",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"privateLinkResourceId": "/subscriptions/03766bec-6c31-4851-aa3c-233d9b60aeaf/resourceGroups/uiap-d-si-synapse/providers/Microsoft.Synapse/workspaces/uiap-synapse-ws",
+				"groupId": "sqlOnDemand",
+				"fqdns": [
+					"uiap-synapse-ws-ondemand.c1368bf0-637e-49c2-8edf-1701bb756fa4.sql.azuresynapse.net"
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/managedVirtualNetworks/default')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/Notebook 2')]",
+			"type": "Microsoft.Synapse/workspaces/notebooks",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"nbformat": 4,
+				"nbformat_minor": 2,
+				"sessionProperties": {
+					"driverMemory": "28g",
+					"driverCores": 4,
+					"executorMemory": "28g",
+					"executorCores": 4,
+					"numExecutors": 2,
+					"conf": {
+						"spark.dynamicAllocation.enabled": "false",
+						"spark.dynamicAllocation.minExecutors": "2",
+						"spark.dynamicAllocation.maxExecutors": "2"
+					}
+				},
+				"metadata": {
+					"saveOutput": true,
+					"synapse_widget": {
+						"version": "0.1",
+						"state": {}
+					},
+					"kernelspec": {
+						"name": "synapse_pyspark",
+						"display_name": "python"
+					},
+					"language_info": {
+						"name": "python"
+					},
+					"sessionKeepAliveTimeout": 30
+				},
+				"cells": [
+					{
+						"cell_type": "code",
+						"metadata": {},
+						"source": [
+							""
+						],
+						"outputs": [],
+						"execution_count": null
+					}
+				]
+			},
+			"dependsOn": []
+		}
+	]
+}
