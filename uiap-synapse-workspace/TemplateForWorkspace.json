@@ -245,7 +245,7 @@
 			"apiVersion": "2019-06-01-preview",
 			"properties": {
 				"content": {
-					"query": " SELECT claimcategory, sum(AmountPaid) as AmountPaid\n FROM [dbo].[sampleClaims] t \n GROUP by claimcategory\n ",
+					"query": " SELECT claimcategory, sum(AmountPaid) as AmountPaid\n FROM [dbo].[sampleClaims] t \n GROUP by claimcategory\n \n  SELECT case when  ClaimType = 1 then 'Cashless' else 'Reimbursement' end as ClaimType , sum(AmountPaid) as AmountPaid\n FROM [dbo].[sampleClaims] t \n GROUP by ClaimType\n ",
 					"metadata": {
 						"language": "sql"
 					},
