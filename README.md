@@ -1,1 +1,1 @@
-# AzureSynapse
+# AzureSynapse - Release
