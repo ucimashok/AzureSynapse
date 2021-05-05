@@ -6,7 +6,7 @@
 		"type": "SqlServer",
 		"typeProperties": {
 			"connectionString": "integrated security=False;data source=192.10.1.72;initial catalog=HealthcareIM_AzureSynapse;user id=azureadmin",
-			"encryptedCredential": "eyJDcmVkZW50aWFsSWQiOiIwM2M0ZWQ0OC00ZDUwLTRiYTQtOTlkNi1jYjNhYTBhMzRiODEiLCJWZXJzaW9uIjoiMi4wIiwiQ2xhc3NUeXBlIjoiTWljcm9zb2Z0LkRhdGFQcm94eS5Db3JlLkludGVyU2VydmljZURhdGFDb250cmFjdC5DcmVkZW50aWFsU1UwNkNZMTQifQ=="
+			"encryptedCredential": "eyJDcmVkZW50aWFsSWQiOiIyOGQyNGRlZi1iYzlhLTRlMzgtODI5ZC0yYTY5Yjg5N2E1NzkiLCJWZXJzaW9uIjoiMi4wIiwiQ2xhc3NUeXBlIjoiTWljcm9zb2Z0LkRhdGFQcm94eS5Db3JlLkludGVyU2VydmljZURhdGFDb250cmFjdC5DcmVkZW50aWFsU1UwNkNZMTQifQ=="
 		},
 		"connectVia": {
 			"referenceName": "IntegrationRuntime1",
