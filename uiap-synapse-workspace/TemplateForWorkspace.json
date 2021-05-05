@@ -225,7 +225,7 @@
 			"apiVersion": "2019-06-01-preview",
 			"properties": {
 				"content": {
-					"query": "SELECT TOP (100) [ClaimFIRNo]\n,[Injury]\n,[ClaimType]\n,[ClaimCategory]\n,[AmountBilled]\n,[AmountNet]\n,[AmountPaid]\n,[DoctorName]\n,[DoctorCity]\n,[ClaimFormDetailId]\n,[IntimationId]\n,[HospitalId]\n,[ClaimStatusId]\n,[PlaceofServiceId]\n,[DateofService]\n,[DatePaid]\n,[DateReceived]\n,[DateofAdmit]\n,[DateofInjury]\n,[DateofDocumentation]\n,[DateofDischarge]\n,[DateModified]\n,[WorkflowSequenceId]\n,[MemberDetailId]\n,[ClassofAccommodation]\n,[HospitalizationType]\n,[Corporate]\n,[ClaimId]\n FROM [dbo].[sampleClaims]",
+					"query": "SELECT TOP (50) [ClaimFIRNo]\n,[Injury]\n,[ClaimType]\n,[ClaimCategory]\n,[AmountBilled]\n,[AmountNet]\n,[AmountPaid]\n,[DoctorName]\n,[DoctorCity]\n,[ClaimFormDetailId]\n,[IntimationId]\n,[HospitalId]\n,[ClaimStatusId]\n,[PlaceofServiceId]\n,[DateofService]\n,[DatePaid]\n,[DateReceived]\n,[DateofAdmit]\n,[DateofInjury]\n,[DateofDocumentation]\n,[DateofDischarge]\n,[DateModified]\n,[WorkflowSequenceId]\n,[MemberDetailId]\n,[ClassofAccommodation]\n,[HospitalizationType]\n,[Corporate]\n,[ClaimId]\n FROM [dbo].[sampleClaims]",
 					"metadata": {
 						"language": "sql"
 					},
@@ -245,7 +245,7 @@
 			"apiVersion": "2019-06-01-preview",
 			"properties": {
 				"content": {
-					"query": " SELECT claimcategory, sum(AmountPaid) as AmountPaid\n FROM [dbo].[sampleClaims] t \n GROUP by claimcategory\n \n  SELECT case when  ClaimType = 1 then 'Cashless' else 'Reimbursement' end as ClaimType , sum(AmountPaid) as AmountPaid\n FROM [dbo].[sampleClaims] t \n GROUP by ClaimType\n ",
+					"query": " SELECT claimcategory, sum(AmountPaid) as AmountPaid\n FROM [dbo].[sampleClaims] t \n GROUP by claimcategory\n \n  SELECT \n    case when  ClaimType = 0 \n            then 'Reimbursement' \n            else 'Cashless' \n    end as ClaimType , \n  sum(AmountPaid) as AmountPaid\n FROM [dbo].[sampleClaims] t \n GROUP by ClaimType\n ",
 					"metadata": {
 						"language": "sql"
 					},
@@ -331,6 +331,46 @@
 						"source": [
 							"print(\"Development\")\n",
 							"print(\"Hello\")"
+						],
+						"outputs": [],
+						"execution_count": null
+					}
+				]
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/Notebook 3')]",
+			"type": "Microsoft.Synapse/workspaces/notebooks",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"nbformat": 4,
+				"nbformat_minor": 2,
+				"sessionProperties": {
+					"driverMemory": "28g",
+					"driverCores": 4,
+					"executorMemory": "28g",
+					"executorCores": 4,
+					"numExecutors": 2,
+					"conf": {
+						"spark.dynamicAllocation.enabled": "false",
+						"spark.dynamicAllocation.minExecutors": "2",
+						"spark.dynamicAllocation.maxExecutors": "2"
+					}
+				},
+				"metadata": {
+					"saveOutput": true,
+					"language_info": {
+						"name": "python"
+					},
+					"sessionKeepAliveTimeout": 30
+				},
+				"cells": [
+					{
+						"cell_type": "code",
+						"metadata": {},
+						"source": [
+							"print(\"From Dev branch\")"
 						],
 						"outputs": [],
 						"execution_count": null
