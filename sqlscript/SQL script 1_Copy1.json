@@ -2,7 +2,7 @@
 	"name": "SQL script 1_Copy1",
 	"properties": {
 		"content": {
-			"query": "SELECT \nClaimType ,ClaimCategory ,sum(AmountPaid) AmountPaid\n \n FROM [dbo].[sampleClaims] \n group by ClaimType ,ClaimCategory",
+			"query": " SELECT claimcategory, sum(AmountPaid) as AmountPaid\n FROM [dbo].[sampleClaims] t \n GROUP by claimcategory\n ",
 			"metadata": {
 				"language": "sql"
 			},
