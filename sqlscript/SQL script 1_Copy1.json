@@ -2,7 +2,7 @@
 	"name": "SQL script 1_Copy1",
 	"properties": {
 		"content": {
-			"query": " SELECT claimcategory, sum(AmountPaid) as AmountPaid\n FROM [dbo].[sampleClaims] t \n GROUP by claimcategory\n \n  SELECT case when  ClaimType = 1 then 'Cashless' else 'Reimbursement' end as ClaimType , sum(AmountPaid) as AmountPaid\n FROM [dbo].[sampleClaims] t \n GROUP by ClaimType\n ",
+			"query": " SELECT claimcategory, sum(AmountPaid) as AmountPaid\n FROM [dbo].[sampleClaims] t \n GROUP by claimcategory\n \n  SELECT \n    case when  ClaimType = 0 \n            then 'Reimbursement' \n            else 'Cashless' \n    end as ClaimType , \n  sum(AmountPaid) as AmountPaid\n FROM [dbo].[sampleClaims] t \n GROUP by ClaimType\n ",
 			"metadata": {
 				"language": "sql"
 			},
