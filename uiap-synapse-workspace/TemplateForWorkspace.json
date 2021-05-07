@@ -282,17 +282,18 @@
 					"saveOutput": true,
 					"language_info": {
 						"name": "scala"
-					}
+					},
+					"sessionKeepAliveTimeout": 30
 				},
 				"cells": [
 					{
 						"cell_type": "code",
+						"metadata": {},
 						"source": [
 							"%%spark\n",
 							"val df = spark.read.sqlanalytics(\"uiapsynapsesqlpoolH.dbo.sampleClaims\") \n",
 							"df.write.mode(\"overwrite\").saveAsTable(\"default.t1\")"
 						],
-						"attachments": null,
 						"outputs": [],
 						"execution_count": null
 					}
@@ -370,7 +371,7 @@
 						"cell_type": "code",
 						"metadata": {},
 						"source": [
-							"print(\"From Dev branch\")"
+							"print(\"From Dev branch.\")"
 						],
 						"outputs": [],
 						"execution_count": null
