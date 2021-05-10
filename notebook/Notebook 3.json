@@ -19,8 +19,7 @@
 			"saveOutput": true,
 			"language_info": {
 				"name": "python"
-			},
-			"sessionKeepAliveTimeout": 30
+			}
 		},
 		"cells": [
 			{
@@ -28,6 +27,7 @@
 				"source": [
 					"print(\"From Main branch.(Nanthakumar J J)\")"
 				],
+				"attachments": null,
 				"execution_count": null
 			}
 		]
